@@ -50,10 +50,10 @@ export function ChamberControls({
       }
       bodyClassName="thin-scroll overflow-y-auto px-3.5 py-2.5"
     >
-      <div className="space-y-2">
-        <div>
+      <div className="space-y-2 sw:grid sw:grid-cols-2 sw:gap-x-6 sw:gap-y-2.5 sw:space-y-0">
+        <div className="sw:col-span-2">
           <div className="label mb-1.5">Presets</div>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5 sw:grid-cols-4">
             {PRESETS.map((p) => {
               const active = matches(p, query);
               return (
@@ -76,7 +76,7 @@ export function ChamberControls({
           </div>
         </div>
 
-        <div className="space-y-2 border-t border-line pt-2.5">
+        <div className="space-y-2 border-t border-line pt-2.5 sw:col-start-1 sw:row-start-2">
           <div className="flex items-center justify-between gap-3">
             <label className="text-[12px] text-muted" htmlFor="fuel">
               Fuel
@@ -86,7 +86,7 @@ export function ChamberControls({
               value={query.fuel}
               data-testid="fuel"
               onChange={(e) => onChange({ fuel: e.target.value as FuelKey })}
-              className="h-[30px] w-[190px] rounded-md border border-line bg-inset pl-2.5 pr-7 text-[12px] text-fg hover:border-line-strong"
+              className="h-[30px] w-[190px] rounded-md sw:w-[160px] border border-line bg-inset pl-2.5 pr-7 text-[12px] text-fg hover:border-line-strong"
             >
               {FUELS.map((f) => (
                 <option key={f.value} value={f.value}>
@@ -108,7 +108,7 @@ export function ChamberControls({
           />
         </div>
 
-        <div className="space-y-2 border-t border-line pt-2.5">
+        <div className="space-y-2 border-t border-line pt-2.5 sw:col-start-2 sw:row-span-2 sw:row-start-2">
           <Slider
             testId="slider-o2"
             label="Oxygen"
@@ -158,7 +158,7 @@ export function ChamberControls({
           </div>
         </div>
 
-        <div className="space-y-2 border-t border-line pt-2.5">
+        <div className="space-y-2 border-t border-line pt-2.5 sw:col-start-1 sw:row-start-3">
           <Slider
             testId="slider-airflow"
             label="Cabin fan airflow"

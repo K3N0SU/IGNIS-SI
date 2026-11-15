@@ -267,8 +267,8 @@ export function Shell({ initialView }: { initialView: View }) {
                 </button>
               </div>
             ) : null}
-            <div className="grid min-h-0 flex-1 grid-cols-[320px_minmax(0,1fr)_384px] gap-2 min-[1700px]:grid-cols-[368px_minmax(0,1fr)_448px]">
-              <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-2">
+            <div className="grid min-h-0 flex-1 grid-cols-[320px_minmax(0,1fr)_384px] gap-2 min-[1700px]:grid-cols-[368px_minmax(0,1fr)_448px] sw:grid-cols-[520px_minmax(0,1fr)_540px]">
+              <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-2 sw:grid-rows-[auto_minmax(0,1fr)]">
                 <ChamberControls query={query} onChange={setQuery} sim={sim} loading={loading} highlight={focus === "controls"} />
                 <EclssPanel sim={sim} highlight={focus === "eclss"} />
               </div>

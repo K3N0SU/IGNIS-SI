@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Wide but short windows, such as a 1920-wide browser with its toolbars showing:
+   spend the spare width on the side columns so nothing has to shrink or scroll. */
+@custom-variant sw (@media (max-height: 900px) and (min-width: 1700px));
+
 @theme {
   --color-canvas: #090a0d;
   --color-panel: #111318;

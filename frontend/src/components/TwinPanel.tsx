@@ -506,6 +506,7 @@ export function TwinPanel({
         )}
         <div className="pointer-events-none absolute bottom-4 left-5">
           <ScaleBar pxPerMm={pxPerMm} />
+          <div className="mt-1.5 text-[11px] text-faint">Drag to rotate, scroll to zoom, double-click to reset</div>
         </div>
       </div>
       {sim ? <PlaybackBar sim={sim} /> : <div className="h-[84px] shrink-0 border-t border-line" />}

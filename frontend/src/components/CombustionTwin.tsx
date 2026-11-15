@@ -258,6 +258,48 @@ export function CombustionTwin({
     scene.add(streaks);
 
     let fieldHeight = 40;
+
+    // Orbit view: drag to rotate about the droplet, wheel to zoom, double-click to reset.
+    const view = { yaw: 0, pitch: 0, zoom: 1 };
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    const onPointerDown = (e: PointerEvent): void => {
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      host.setPointerCapture(e.pointerId);
+      host.style.cursor = "grabbing";
+    };
+    const onPointerMove = (e: PointerEvent): void => {
+      if (!dragging) return;
+      view.yaw -= (e.clientX - lastX) * 0.008;
+      view.pitch = Math.min(Math.max(view.pitch + (e.clientY - lastY) * 0.008, -1.35), 1.35);
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+    const onPointerUp = (e: PointerEvent): void => {
+      dragging = false;
+      if (host.hasPointerCapture(e.pointerId)) host.releasePointerCapture(e.pointerId);
+      host.style.cursor = "grab";
+    };
+    const onWheel = (e: WheelEvent): void => {
+      e.preventDefault();
+      view.zoom = Math.min(Math.max(view.zoom * Math.exp(-e.deltaY * 0.0012), 0.6), 6);
+    };
+    const onReset = (): void => {
+      view.yaw = 0;
+      view.pitch = 0;
+      view.zoom = 1;
+    };
+    host.style.cursor = "grab";
+    host.style.touchAction = "none";
+    host.addEventListener("pointerdown", onPointerDown);
+    host.addEventListener("pointermove", onPointerMove);
+    host.addEventListener("pointerup", onPointerUp);
+    host.addEventListener("pointercancel", onPointerUp);
+    host.addEventListener("wheel", onWheel, { passive: false });
+    host.addEventListener("dblclick", onReset);
     let fieldTarget = 40;
     let width = 1;
     let height = 1;
@@ -327,9 +369,14 @@ export function CombustionTwin({
       }
 
       fieldHeight += (fieldTarget - fieldHeight) * Math.min(dt * 4, 1);
-      camera.position.set(0, 0, fieldHeight / 2 / Math.tan((FOV_DEG * Math.PI) / 360));
+      const distance = fieldHeight / 2 / Math.tan((FOV_DEG * Math.PI) / 360) / view.zoom;
+      camera.position.set(
+        distance * Math.sin(view.yaw) * Math.cos(view.pitch),
+        distance * Math.sin(view.pitch),
+        distance * Math.cos(view.yaw) * Math.cos(view.pitch),
+      );
       camera.lookAt(0, 0, 0);
-      const pxPerMm = height / fieldHeight;
+      const pxPerMm = (height / fieldHeight) * view.zoom;
       if (Math.abs(pxPerMm - lastReportedScale) > 0.02 * pxPerMm) {
         lastReportedScale = pxPerMm;
         onScaleRef.current?.(pxPerMm);
@@ -404,6 +451,12 @@ export function CombustionTwin({
     raf = requestAnimationFrame(frame);
 
     return () => {
+      host.removeEventListener("pointerdown", onPointerDown);
+      host.removeEventListener("pointermove", onPointerMove);
+      host.removeEventListener("pointerup", onPointerUp);
+      host.removeEventListener("pointercancel", onPointerUp);
+      host.removeEventListener("wheel", onWheel);
+      host.removeEventListener("dblclick", onReset);
       cancelAnimationFrame(raf);
       observer.disconnect();
       shellGeo.dispose();
