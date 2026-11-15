@@ -99,6 +99,7 @@ export function Shell({ initialView }: { initialView: View }) {
   const [touring, setTouring] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const firstLoad = useRef(true);
+  const autoRetries = useRef(0);
 
   const setQuery = useCallback((patch: Partial<ChamberQuery>) => setQueryState((q) => ({ ...q, ...patch })), []);
 
@@ -129,6 +130,7 @@ export function Shell({ initialView }: { initialView: View }) {
         .then((result) => {
           setSim(result);
           setError(null);
+          autoRetries.current = 0;
           setLoading(false);
           const duration = result.t[result.t.length - 1];
           clock.load(duration, result.query.dt_s, !firstLoad.current);
@@ -141,6 +143,11 @@ export function Shell({ initialView }: { initialView: View }) {
           if (ctl.signal.aborted) return;
           setLoading(false);
           setError(e instanceof Error ? e.message : "Solver request failed");
+          // The service restarts itself within a few seconds; try again before asking the user to.
+          if (autoRetries.current < 4) {
+            autoRetries.current += 1;
+            window.setTimeout(() => setRetry((n) => n + 1), 2500);
+          }
         });
     }, 90);
     return () => {
@@ -269,7 +276,7 @@ export function Shell({ initialView }: { initialView: View }) {
                 <TwinPanel sim={sim} mode={mode} onMode={setMode} highlight={focus === "twin"} />
               </div>
               <div className="grid min-h-0 grid-rows-[minmax(0,1.45fr)_minmax(0,1fr)] gap-2">
-                <TelemetryCharts sim={sim} highlight={focus === "telemetry"} />
+                <TelemetryCharts sim={sim} highlight={focus === "telemetry"} reference={assessment?.nearest_tests[0] ?? null} />
                 <CitationInspector sim={sim} assessment={assessment} highlight={focus === "inspector"} />
               </div>
             </div>

@@ -64,7 +64,8 @@ npx next build | tail -n 8
 
 step "Launching servers"
 stop_servers
-(cd "$ROOT/backend" && exec "$PY" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --log-level warning) &
+# The supervisor restarts the API if its process dies.
+"$PY" "$ROOT/scripts/serve_backend.py" --port 8000 &
 BACKEND_PID=$!
 (cd "$ROOT/frontend" && exec npx next start -p 3000) >/dev/null 2>&1 &
 FRONTEND_PID=$!

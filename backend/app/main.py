@@ -28,6 +28,7 @@ FIT_PATH = validation.OUTPUT_PATH.parents[1] / "calibration_fit.json"
 from physics.solver import SimulationConfig, simulate
 
 from . import assistant
+from .serial import COMPUTE_LOCK, serial
 from .schemas import (
     AerosolQuery,
     AssistantRequest,
@@ -114,6 +115,7 @@ def health() -> dict[str, object]:
 
 
 @app.post("/api/simulate", response_model=SimulationOut)
+@serial
 def run_simulation(query: ChamberQuery) -> SimulationOut:
     cfg = _config(query)
     started = time.perf_counter()
@@ -144,6 +146,7 @@ def run_simulation(query: ChamberQuery) -> SimulationOut:
 
 
 @app.post("/api/classify", response_model=ClassifyOut)
+@serial
 def classify(frame: SensorFrame) -> ClassifyOut:
     n = len(frame.t)
     if not (len(frame.radiometer_w_m2) == len(frame.uv_intensity) == len(frame.co_o2_ratio) == n):
@@ -158,6 +161,7 @@ def classify(frame: SensorFrame) -> ClassifyOut:
 
 
 @app.post("/api/eclss", response_model=ProtocolOut)
+@serial
 def eclss(query: ChamberQuery) -> ProtocolOut:
     cfg = _config(query)
     protocol = generate_protocol(cfg, simulate(cfg))
@@ -168,6 +172,7 @@ def eclss(query: ChamberQuery) -> ProtocolOut:
 
 
 @app.post("/api/uncertainty")
+@serial
 def uncertainty(query: ChamberQuery, ensemble: int = 12) -> dict[str, object]:
     if not 0 <= ensemble <= 32:
         raise HTTPException(status_code=422, detail="ensemble must be between 0 and 32.")
@@ -175,6 +180,7 @@ def uncertainty(query: ChamberQuery, ensemble: int = 12) -> dict[str, object]:
 
 
 @app.post("/api/frontier")
+@serial
 def frontier(query: FrontierQuery) -> dict[str, object]:
     o2 = [round(0.10 + 0.01 * i, 2) for i in range(31)]
     airflow = [float(u) for u in range(0, 21)]
@@ -186,6 +192,7 @@ def frontier(query: FrontierQuery) -> dict[str, object]:
 
 
 @app.post("/api/flow-sweep")
+@serial
 def flow_sweep(query: FlowSweepQuery) -> dict[str, object]:
     # Geometric spacing resolves the 0-10 cm/s rise and the blowoff limit together.
     grid = [0.0] + [float(v) for v in np.geomspace(0.25, query.max_airflow_cm_s, query.points - 1)]
@@ -195,6 +202,7 @@ def flow_sweep(query: FlowSweepQuery) -> dict[str, object]:
 
 
 @app.post("/api/aerosol")
+@serial
 def aerosol(query: AerosolQuery) -> dict[str, object]:
     runs = compare_gravity(
         query.primary_diameter_nm, query.initial_number_cm3, query.ventilation_cm_s, query.duration_s, query.pressure_atm
@@ -248,6 +256,7 @@ def flight_datasets() -> dict[str, object]:
 
 
 @app.get("/api/flight/flex")
+@serial
 def flight_flex() -> dict[str, object]:
     report = dict(_flex_validation())
     report["calibration"] = json.loads(FIT_PATH.read_text(encoding="utf-8")) if FIT_PATH.exists() else None
@@ -267,8 +276,9 @@ def assistant_status() -> dict[str, object]:
 @app.post("/api/assistant")
 def assistant_chat(request: AssistantRequest) -> dict[str, object]:
     cfg = _config(request.query)
-    result = simulate(cfg)
-    protocol = generate_protocol(cfg, result)
+    with COMPUTE_LOCK:
+        result = simulate(cfg)
+        protocol = generate_protocol(cfg, result)
     summary = {
         "summary": result.summary,
         "events": [{"t_s": round(e.t, 1), "event": e.kind} for e in result.events],

@@ -13,6 +13,8 @@ where node >nul 2>nul || (echo Node.js 20+ is required. & exit /b 1)
 rem A server left running from an earlier launch holds file locks in
 rem node_modules, which makes npm ci fail.
 call :stop_servers
+rem Stop the supervisor first so it does not restart the API being stopped.
+taskkill /F /FI "WINDOWTITLE eq IGNIS-SI backend*" >nul 2>nul
 
 echo.
 echo == Backend dependencies ==
@@ -49,7 +51,8 @@ popd
 echo.
 echo == Launching servers ==
 call :stop_servers
-start "IGNIS-SI backend" /min cmd /c "cd /d "%ROOT%backend" && "%PY%" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --log-level warning"
+rem The supervisor restarts the API if its process dies.
+start "IGNIS-SI backend" /min "%PY%" "%ROOT%scripts\serve_backend.py" --port 8000
 start "IGNIS-SI frontend" /min cmd /c "cd /d "%ROOT%frontend" && npx next start -p 3000"
 
 echo.

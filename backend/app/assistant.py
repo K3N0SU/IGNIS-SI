@@ -27,6 +27,8 @@ from ml.uncertainty import assess
 from physics.eclss import generate_protocol
 from physics.solver import SimulationConfig, simulate
 
+from .serial import COMPUTE_LOCK
+
 ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
 FIT_PATH = Path(__file__).resolve().parents[1] / "data" / "calibration_fit.json"
 API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -314,7 +316,8 @@ def chat(messages: list[dict[str, str]], current_query: dict[str, Any], state_su
             for call in calls:
                 name, args = str(call.get("name", "")), dict(call.get("args") or {})
                 try:
-                    result = _execute(name, args, current, actions)
+                    with COMPUTE_LOCK:
+                        result = _execute(name, args, current, actions)
                 except Exception as err:  # a tool failure is reported to the model, not raised to the user
                     result = {"error": f"{type(err).__name__}: {err}"}
                 trace.append({"name": name, "args": args})

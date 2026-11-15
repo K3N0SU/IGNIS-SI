@@ -7,7 +7,7 @@ import { notableEvents, placeLabels } from "@/lib/events";
 import type { GlossaryKey } from "@/lib/glossary";
 import { clock, usePlayback } from "@/lib/playback";
 import { COLORS, REGIME_STYLE, fmt, fmtExp, runs } from "@/lib/regimes";
-import type { Regime, SimEvent, Simulation } from "@/lib/types";
+import type { FlightNeighbour, Regime, SimEvent, Simulation } from "@/lib/types";
 
 import { Panel, Skeleton, Term } from "./ui";
 
@@ -20,6 +20,7 @@ const SUPERSCRIPT: Record<string, string> = { "-": "⁻", "0": "⁰", "1": "¹",
 interface Row {
   t: number;
   d2: number;
+  flight?: number;
   tf: number;
   rad: number;
   uv: number;
@@ -152,6 +153,18 @@ const Plot = memo(function Plot({
           ticks={def.log ? [1e-4, 1e-2, 1, 1e2] : undefined}
           tickFormatter={def.log ? logTick : linearTick}
         />
+        {def.id === "d2" ? (
+          <Line
+            type="linear"
+            dataKey="flight"
+            stroke={COLORS.nominal}
+            strokeWidth={1.5}
+            strokeDasharray="5 4"
+            dot={false}
+            connectNulls={false}
+            isAnimationActive={false}
+          />
+        ) : null}
         {def.traces.map((trace) => (
           <Line
             key={trace.key}
@@ -244,17 +257,39 @@ function EventStrip({ events, duration }: { events: SimEvent[]; duration: number
   );
 }
 
-export function TelemetryCharts({ sim, highlight }: { sim: Simulation | null; highlight?: boolean }) {
+/** Largest scaled distance at which a flight test is still a fair comparison for the scenario. */
+const REFERENCE_MAX_DISTANCE = 1.0;
+
+export function TelemetryCharts({
+  sim,
+  highlight,
+  reference,
+}: {
+  sim: Simulation | null;
+  highlight?: boolean;
+  reference?: FlightNeighbour | null;
+}) {
+  const flight =
+    reference && reference.same_fuel && reference.burning_rate_mm2_s && reference.distance <= REFERENCE_MAX_DISTANCE
+      ? reference
+      : null;
   const { rows, bands, duration, markers } = useMemo(() => {
     if (!sim) return { rows: [] as Row[], bands: [] as [number, number, Regime][], duration: 1, markers: [] as number[] };
     const n = sim.t.length;
     const stride = Math.max(1, Math.ceil(n / MAX_POINTS));
     const s = sim.series;
     const out: Row[] = [];
+    // Flight line: the d-squared law drawn from the measured burning rate, ending where
+    // the visible flame was lost (measured extinction diameter) or at the recorded burn time.
+    const rate = flight?.burning_rate_mm2_s ?? 0;
+    const start = flight ? flight.d0_mm ** 2 : 0;
+    const floor = flight?.extinction_diameter_mm != null ? flight.extinction_diameter_mm ** 2 : 0;
+    const tEnd = flight ? Math.min((start - floor) / rate, flight.extinction_diameter_mm != null ? Infinity : (flight.burn_time_s ?? Infinity)) : 0;
     for (let i = 0; i < n; i += stride) {
       out.push({
         t: sim.t[i],
         d2: s.d2_mm2[i],
+        flight: flight && sim.t[i] <= tEnd + sim.query.dt_s * stride ? Math.max(start - rate * Math.min(sim.t[i], tEnd), 0) : undefined,
         tf: s.flame_temperature_k[i],
         rad: Math.max(s.radiometer_w_m2[i], LOG_FLOOR),
         uv: Math.max(s.uv_intensity[i], LOG_FLOOR),
@@ -265,7 +300,7 @@ export function TelemetryCharts({ sim, highlight }: { sim: Simulation | null; hi
     const timeBands = runs(sim.regime).map(([a, b, r]) => [sim.t[a], sim.t[b], r] as [number, number, Regime]);
     const eventTimes = [...new Set(notableEvents(sim.events, sim.query.airflow_cm_s).filter((e) => e.t > 0).map((e) => e.t))];
     return { rows: out, bands: timeBands, duration: sim.t[n - 1], markers: eventTimes };
-  }, [sim]);
+  }, [sim, flight]);
 
   const shaded = useMemo(
     () => [...new Set(bands.map(([, , r]) => r))].filter((r) => r === "INVISIBLE_COOL_FLAME" || r === "RE_IGNITION_RISK"),
@@ -305,7 +340,15 @@ export function TelemetryCharts({ sim, highlight }: { sim: Simulation | null; hi
                 {def.hint ? <Term k={def.hint}>{def.title}</Term> : def.title}
                 <span className="ml-2 text-[11px] font-normal text-muted">{def.unit}</span>
               </span>
-              {sim && def.traces.length === 1 ? <Values def={def} sim={sim} /> : null}
+              <span className="flex items-center gap-3">
+                {def.id === "d2" && flight ? (
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted" data-testid="flight-overlay">
+                    <span className="w-4 border-t-2 border-dashed border-nominal" />
+                    NASA test <span className="num text-fg">{flight.identifier}</span>, measured rate
+                  </span>
+                ) : null}
+                {sim && def.traces.length === 1 ? <Values def={def} sim={sim} /> : null}
+              </span>
             </div>
             {sim && def.traces.length > 1 ? (
               <div className="mt-0.5 flex h-[18px] items-center px-1.5">
