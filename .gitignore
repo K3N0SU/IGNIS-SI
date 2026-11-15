@@ -29,3 +29,6 @@ scripts/.capture/
 .DS_Store
 Thumbs.db
 *.log
+
+# Local assistant session notes
+.claude/
