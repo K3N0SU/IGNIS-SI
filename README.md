@@ -2,7 +2,7 @@
 
 **A spacecraft fire-safety workbench built on NASA flight data.** It shows the fire a camera cannot see, predicts what happens when the cabin fans come back on, and tells you whether NASA has ever tested the condition you are looking at.
 
-`demo_30s.mp4` in this directory is a 30-second film of the running application.
+Two films of the running application are in this directory: `demo_30s.mp4` (30 seconds) and `demo_5min.mp4` (a five-minute walkthrough of every view).
 
 ## The problem
 
@@ -14,7 +14,7 @@ The standard first response to a spacecraft fire is to stop ventilation. If the 
 
 | View | What you can do |
 |---|---|
-| **Workbench** | Set fuel, droplet size, oxygen, pressure and fan airflow. Watch the burn in 3D through an optical camera or a UV sensor, with synchronised sensor charts, a plain-language fire state, a step-by-step life-support response and the closest real NASA test. |
+| **Workbench** | Set fuel, droplet size, oxygen, pressure and fan airflow. Watch the burn in 3D through an optical camera or a UV sensor, with synchronised sensor charts (the closest real NASA test is drawn on the droplet-size chart), a plain-language fire state, a step-by-step life-support response and the evidence behind the prediction. |
 | **Analytics** | Compare cabin materials across the ISS, 10.2 psia and Artemis atmospheres; see which conditions NASA has flown; see how fire intensity responds to airflow; see how smoke particles grow in orbit. |
 | **Flight data** | Browse all 261 usable FLEX droplet burns, see the model plotted against flight measurements, and open every NASA dataset used, with its DOI. |
 | **Assistant** | Ask a question in plain language. It runs the simulation, looks up flight tests and sets up the workbench to show you the answer. |
@@ -33,6 +33,8 @@ start.bat             # Windows
 The script installs dependencies, checks the model against the NASA flight tables, trains the classifier, runs the tests, builds the frontend, starts both servers and smoke-tests every endpoint. Then open http://localhost:3000.
 
 `./start.sh --verify` (or `start.bat --verify`) runs the same checks and then stops the servers.
+
+The API runs under a small supervisor (`scripts/serve_backend.py`) that restarts it if its process dies, and the interface retries on its own, so a dropped service recovers without a reload.
 
 **Assistant (optional).** Copy `backend/.env.example` to `backend/.env` and set `GEMINI_API_KEY`. Without a key everything else works and the assistant panel explains how to enable it. When it is enabled, your question and the current scenario are sent to Google Gemini; nothing else is.
 
@@ -89,9 +91,9 @@ For n-heptane in air at 1 atm the model reproduces the central FLEX result close
 |---|---|---|
 | **Impact** | Addresses a real crew-safety hazard: a fire that is invisible to the standard optical check, and a standard response (fan restart) that can make it worse. Produces a concrete response protocol with oxygen, pressure and airflow targets. | The response protocol is a decision aid. It has not been reviewed by flight operations. |
 | **Creativity** | Shows the same fire through two sensors side by side; turns "has this been tested?" into a first-class answer with the nearest real tests; an assistant that operates the workbench instead of only chatting. | The 3D view is a visualisation of the model, not a reconstruction of flight video. |
-| **Validity** | Physics from the droplet-combustion literature; constants fitted to 196 real ISS tests and scored on 65 held out; 104 automated tests; every source has a DOI. | Model error is still 18 % on burning rate. Methanol near its flammability limit is the weakest area. Re-ignition under flow has no flight data. |
+| **Validity** | Physics from the droplet-combustion literature; constants fitted to 196 real ISS tests and scored on 65 held out; 104 unit tests plus browser and load tests; every source has a DOI. | Model error is still 18 % on burning rate. Methanol near its flammability limit is the weakest area. Re-ignition under flow has no flight data. |
 | **Relevance** | Uses eleven NASA PSI investigations directly, including the FLEX discovery of cool flames, and extends them to the Artemis 34 % oxygen atmosphere. | Saffire IV to VI tables were not found in PSI at retrieval time, so exploration-atmosphere flame-spread data is cited, not used. |
-| **Presentation** | Plain-language fire state, guided tour, glossary tooltips, a 30-second film, one-command start, and this document. | Designed for desktop at 1920x1080; smaller windows scroll inside panels. Not tested on mobile. |
+| **Presentation** | Plain-language fire state, guided tour, glossary tooltips, a 30-second film and a five-minute walkthrough, one-command start, and this document. | Designed for desktop at 1920x1080; smaller windows scroll inside panels. Not tested on mobile. |
 
 ## How it works
 
@@ -106,7 +108,7 @@ backend/
   app/       FastAPI service and the assistant agent
   tests/     104 pytest cases
 frontend/    Next.js, three.js, Recharts
-scripts/     smoke test, screenshots, film recorder, score synthesiser
+scripts/     API supervisor, smoke, browser and load tests, screenshots, film recorders, score synthesiser
 ```
 
 **Physics in brief.** A burning droplet follows `D²(t) = D0² - K t` with `K = 8 λ_g / (ρ_l c_pg) · ln(1 + B)`, where the logarithm accounts for Stefan flow and `B` includes the heat of combustion reduced by the radiated fraction. Radiation from the flame ball scales as `D³ T⁴` while heat release scales as `D`, so large droplets radiate themselves out. Extinction is a single Damkohler-number test, `Da = τ_flow / τ_chem < 1`, which yields radiative, blowoff and small-droplet limits. A separate low-temperature branch models the cool flame; slow airflow raises its temperature and can carry it back to hot ignition. Methanol absorbs water from its own flame, which is modelled as dilution of the fuel stream. Smoke growth uses a number- and mass-conserving sectional coagulation model for fractal aggregates.
@@ -141,10 +143,15 @@ python -m pytest -q
 
 ```bash
 cd scripts && npm install
+node e2e_test.mjs                               # drive the interface in a real browser
+python soak_test.py                             # 400 concurrent randomised requests
 python make_score.py && node record_demo.mjs    # re-record demo_30s.mp4
+python make_score.py .capture/score_long.wav --seconds 300 && node record_long.mjs    # demo_5min.mp4
 ```
 
-About the film: camera moves, the pointer, captions and title cards are drawn by the recorder and are not part of the application. The music is synthesised by `scripts/make_score.py` and carries no third-party rights. One edit is made for time: the assistant's answer is requested from the live service just before recording and replayed when the question is asked, because a live answer takes 8 to 16 seconds.
+Checks run on the final code: 104 unit tests, the endpoint smoke test, an 18-step browser test, and three load runs of 400 concurrent requests each with no failed request and no service restart.
+
+About the films: camera moves, the pointer, captions and title cards are drawn by the recorder and are not part of the application. The music is synthesised by `scripts/make_score.py` and carries no third-party rights. One edit is made for time in both films: the assistant's answer is requested from the live service just before recording and replayed when the question is asked, because a live answer takes 8 to 16 seconds.
 
 ## References
 

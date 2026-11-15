@@ -23,6 +23,7 @@ next-env.d.ts
 scripts/.capture/
 
 # Environment and OS
+.supervisor.pid
 .env
 .env.*
 !.env.example

@@ -13,8 +13,6 @@ where node >nul 2>nul || (echo Node.js 20+ is required. & exit /b 1)
 rem A server left running from an earlier launch holds file locks in
 rem node_modules, which makes npm ci fail.
 call :stop_servers
-rem Stop the supervisor first so it does not restart the API being stopped.
-taskkill /F /FI "WINDOWTITLE eq IGNIS-SI backend*" >nul 2>nul
 
 echo.
 echo == Backend dependencies ==
@@ -75,6 +73,8 @@ echo Close the two minimised server windows to stop.
 exit /b 0
 
 :stop_servers
+rem Stop the supervisor first so it does not restart the API being stopped.
+if exist "%PY%" "%PY%" "%ROOT%scripts\serve_backend.py" --stop >nul 2>nul
 for %%P in (8000 3000) do (
   for /f "tokens=5" %%I in ('netstat -ano ^| findstr /r /c:":%%P .*LISTENING"') do taskkill /F /PID %%I >nul 2>nul
 )

@@ -80,10 +80,13 @@ def render(seconds: float, seed: int = 21) -> np.ndarray:
     rng = np.random.default_rng(seed)
     total = int(seconds * RATE)
     mix = np.zeros((total + 6 * RATE, 2))
-    chord_len = seconds / len(PROGRESSION)
+    # One pass through the progression lasts about half a minute; longer pieces repeat it.
+    cycles = max(1, round(seconds / 30.0))
+    sequence = PROGRESSION * cycles
+    chord_len = seconds / len(sequence)
     overlap = 2.6
 
-    for i, (notes, bass) in enumerate(PROGRESSION):
+    for i, (notes, bass) in enumerate(sequence):
         start = max(int((i * chord_len - overlap / 2) * RATE), 0)
         n = int((chord_len + overlap) * RATE)
         env = envelope(n, overlap, overlap)[:, None]
@@ -100,8 +103,14 @@ def render(seconds: float, seed: int = 21) -> np.ndarray:
     mix = sosfilt(pad_filter, mix, axis=0)
 
     bells = np.zeros_like(mix)
-    step = seconds / len(BELL_NOTES)
-    for i, note in enumerate(BELL_NOTES):
+    bell_line = BELL_NOTES * cycles
+    step = seconds / len(bell_line)
+    for i, note in enumerate(bell_line):
+        # Alternate passes drop an octave and thin out, so the loop does not repeat exactly.
+        cycle = i // len(BELL_NOTES)
+        if cycle % 2 == 1 and i % 2 == 1:
+            continue
+        note = note - 12 if cycle % 2 == 1 else note
         at = int((1.6 + i * step + rng.uniform(-0.25, 0.25)) * RATE)
         tone = bell(hz(note), 3.5, rng) * 0.05
         if at + len(tone) < len(bells):

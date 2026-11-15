@@ -348,7 +348,7 @@ execFileSync(
     "-f", "concat", "-safe", "0", "-i", "frames.ffconcat",
     "-t", String(length),
     "-vf", `fps=${OUTPUT_FPS},scale=${WIDTH}:${HEIGHT}:flags=lanczos,fade=t=in:st=0:d=0.5,fade=t=out:st=${fadeOut}:d=0.5,format=yuv420p`,
-    "-c:v", "libx264", "-preset", "slow", "-crf", "15", "-profile:v", "high", "-an",
+    "-c:v", "libx264", "-preset", "medium", "-threads", "8", "-crf", "15", "-profile:v", "high", "-an",
     SILENT,
   ],
   { cwd: WORK, stdio: "inherit" },

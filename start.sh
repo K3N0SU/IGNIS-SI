@@ -13,6 +13,8 @@ FRONTEND_PID=""
 step() { printf '\n== %s ==\n' "$1"; }
 
 stop_servers() {
+  # Stop the supervisor first so it does not restart the API being stopped.
+  [ -n "${PY:-}" ] && "$PY" "$ROOT/scripts/serve_backend.py" --stop >/dev/null 2>&1 || true
   [ -n "$BACKEND_PID" ] && kill "$BACKEND_PID" 2>/dev/null || true
   [ -n "$FRONTEND_PID" ] && kill "$FRONTEND_PID" 2>/dev/null || true
   # On Windows the Node and Python children outlive the shell job; free the ports explicitly.
