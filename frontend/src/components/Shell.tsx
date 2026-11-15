@@ -51,23 +51,40 @@ function Wordmark() {
 }
 
 function ApiDown({ message, onRetry }: { message: string; onRetry: () => void }) {
+  // On a developer's machine the fix is to start the service. On a hosted
+  // site the service has usually been put to sleep and is already waking.
+  const [local, setLocal] = useState(false);
+  useEffect(() => setLocal(["localhost", "127.0.0.1"].includes(window.location.hostname)), []);
+
   return (
     <div className="flex h-full items-center justify-center" role="alert" data-testid="api-error">
       <div className="w-[520px] max-w-full rounded-md border border-line bg-panel p-6">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-critical" />
-          <h2 className="text-[15px] font-semibold text-fg">The simulation service is not responding</h2>
+          <span className={`h-2 w-2 rounded-full ${local ? "bg-critical" : "bg-warning"}`} />
+          <h2 className="text-[15px] font-semibold text-fg">
+            {local ? "The simulation service is not responding" : "Waking up the simulation service"}
+          </h2>
         </div>
-        <p className="mt-2 text-[13px] leading-relaxed text-muted">
-          This page needs the IGNIS-SI solver running on this computer at port 8000. Nothing can be simulated until
-          it is back.
-        </p>
-        <div className="mt-4 text-[12px] text-muted">To start it, run this from the project folder:</div>
-        <pre className="num mt-1.5 rounded-md border border-line bg-inset px-3 py-2.5 text-[12px] leading-relaxed text-fg">
-          {"./start.sh        macOS, Linux, Git Bash\nstart.bat         Windows"}
-        </pre>
+        {local ? (
+          <>
+            <p className="mt-2 text-[13px] leading-relaxed text-muted">
+              This page needs the IGNIS-SI solver running on this computer at port 8000. Nothing can be simulated
+              until it is back.
+            </p>
+            <div className="mt-4 text-[12px] text-muted">To start it, run this from the project folder:</div>
+            <pre className="num mt-1.5 rounded-md border border-line bg-inset px-3 py-2.5 text-[12px] leading-relaxed text-fg">
+              {"./start.sh        macOS, Linux, Git Bash\nstart.bat         Windows"}
+            </pre>
+          </>
+        ) : (
+          <p className="mt-2 text-[13px] leading-relaxed text-muted">
+            The service that runs the physics goes to sleep when nobody has used the site for a while. Waking it
+            takes up to a minute. This page keeps trying and will load by itself, so there is nothing you need to
+            do.
+          </p>
+        )}
         <div className="mt-4 flex items-center justify-between gap-4">
-          <span className="num min-w-0 truncate text-[11px] text-faint">{message}</span>
+          <span className="num min-w-0 truncate text-[11px] text-faint">{local ? message : "Trying again every few seconds"}</span>
           <button
             type="button"
             onClick={onRetry}
@@ -143,10 +160,11 @@ export function Shell({ initialView }: { initialView: View }) {
           if (ctl.signal.aborted) return;
           setLoading(false);
           setError(e instanceof Error ? e.message : "Solver request failed");
-          // The service restarts itself within a few seconds; try again before asking the user to.
-          if (autoRetries.current < 4) {
+          // A restarted service is back in seconds; a hosted one that was asleep
+          // can take a minute. Keep trying for about two minutes before giving up.
+          if (autoRetries.current < 40) {
             autoRetries.current += 1;
-            window.setTimeout(() => setRetry((n) => n + 1), 2500);
+            window.setTimeout(() => setRetry((n) => n + 1), 3000);
           }
         });
     }, 90);
