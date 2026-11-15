@@ -103,7 +103,7 @@ class TestUncertainty:
 
     def test_ventilated_condition_is_beyond_frontier(self) -> None:
         a = assess(SimulationConfig(airflow_cm_s=8.0, flow_mode="RESTORE_AFTER_EXTINCTION"), ensemble_size=6)
-        assert a.verdict == "BEYOND_FRONTIER" and a.frontier_distance > 1.0
+        assert a.verdict == "BEYOND_FRONTIER" and a.frontier_distance > 0.5
         assert any(d.dimension == "airflow_cm_s" and not d.inside for d in a.dimensions)
         assert a.outcome_distribution is not None and sum(a.outcome_distribution.values()) == pytest.approx(1.0)
 

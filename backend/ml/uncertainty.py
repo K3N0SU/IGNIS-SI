@@ -11,6 +11,10 @@ the ISS droplet campaigns (FLEX, FLEX-2, CFI). It is
                    together, but not jointly by any single one;
   BEYOND_FRONTIER  outside the tested range in at least one dimension.
 
+Nearest flight tests. The FLEX flight table (NASA PSI-69) is searched for the
+tests closest to the query in a scaled parameter space, so a verdict can be
+traced to specific tests and their measured results.
+
 Model disagreement. The closure constants of the reduced-order model are
 not known exactly. An ensemble of solver runs with those constants perturbed
 within their plausible spread is evaluated at the query; the entropy of the
@@ -29,6 +33,7 @@ from typing import Literal
 import numpy as np
 
 from data.nasa_psi_corpus import DROPLET_CAMPAIGNS, ENVELOPE_DIMENSIONS, EXPERIMENTS
+from data.psi_flight import load_flex
 from physics.properties import DEFAULT_CALIBRATION, ModelCalibration
 from physics.solver import SimulationConfig, simulate
 
@@ -82,6 +87,8 @@ class Assessment:
     outcome_distribution: dict[str, float] | None
     predicted_outcome: str | None
     ensemble_size: int
+    nearest_tests: list[dict[str, object]]
+    nearest_distance: float | None
 
 
 def _exceedance(value: float, low: float, high: float, scale: float) -> float:
@@ -125,6 +132,53 @@ def envelope_check(cfg: SimulationConfig) -> tuple[Verdict, float, list[Dimensio
     return verdict, round(frontier, 4), dims, checks
 
 
+# Scales that make one unit of distance comparable across parameters: the
+# spread of each quantity over the FLEX matrix.
+_NEIGHBOUR_SCALE = {"d0_mm": 1.0, "x_o2": 0.05, "log_pressure": 0.35, "x_co2": 0.10, "x_he": 0.10}
+_FUEL_MISMATCH_DISTANCE = 3.0
+
+
+def nearest_flight_tests(cfg: SimulationConfig, k: int = 5) -> list[dict[str, object]]:
+    """FLEX flight tests closest to the query, nearest first.
+
+    The FLEX chamber was quiescent, so airflow is not part of the distance;
+    a non-zero query airflow is reported by the envelope check instead.
+    """
+    ambient = cfg.ambient
+    fractions = ambient.diluent_fractions
+    balance = 1.0 - cfg.x_o2
+    q_co2, q_he = fractions["CO2"] * balance, fractions["He"] * balance
+    scored: list[tuple[float, object]] = []
+    for test in load_flex():
+        if not test.usable or test.d0_mm is None:
+            continue
+        d2 = (
+            ((test.d0_mm - cfg.d0_mm) / _NEIGHBOUR_SCALE["d0_mm"]) ** 2
+            + ((test.x_o2 - cfg.x_o2) / _NEIGHBOUR_SCALE["x_o2"]) ** 2
+            + (log(test.pressure_atm / cfg.pressure_atm) / _NEIGHBOUR_SCALE["log_pressure"]) ** 2
+            + ((test.x_co2 - q_co2) / _NEIGHBOUR_SCALE["x_co2"]) ** 2
+            + ((test.x_he - q_he) / _NEIGHBOUR_SCALE["x_he"]) ** 2
+        )
+        distance = sqrt(d2) + (0.0 if test.fuel == cfg.fuel else _FUEL_MISMATCH_DISTANCE)
+        scored.append((distance, test))
+    scored.sort(key=lambda pair: pair[0])
+    out: list[dict[str, object]] = []
+    for distance, test in scored[:k]:
+        ratio = None
+        if test.extinction_diameter_mm is not None and test.d0_mm:  # type: ignore[attr-defined]
+            ratio = round(test.extinction_diameter_mm / test.d0_mm, 3)  # type: ignore[attr-defined]
+        out.append({
+            "identifier": test.identifier, "test_number": test.test_number, "date": test.date,  # type: ignore[attr-defined]
+            "fuel": test.fuel, "same_fuel": test.fuel == cfg.fuel,  # type: ignore[attr-defined]
+            "d0_mm": test.d0_mm, "x_o2": test.x_o2, "pressure_atm": round(test.pressure_atm, 3),  # type: ignore[attr-defined]
+            "diluent": test.diluent_label, "x_co2": test.x_co2, "x_he": test.x_he,  # type: ignore[attr-defined]
+            "burning_rate_mm2_s": test.burning_rate_mm2_s, "extinction_diameter_mm": test.extinction_diameter_mm,  # type: ignore[attr-defined]
+            "extinction_ratio": ratio, "burn_time_s": test.burn_time_s, "test_end": test.test_end,  # type: ignore[attr-defined]
+            "distance": round(distance, 3),
+        })
+    return out
+
+
 def classify_outcome(summary: dict[str, float | str | bool | None]) -> str:
     if float(summary["hot_flame_duration_s"] or 0.0) == 0.0:
         return "NO_IGNITION"
@@ -157,6 +211,7 @@ def model_disagreement(cfg: SimulationConfig, size: int = 12) -> tuple[float, di
 
 def assess(cfg: SimulationConfig, ensemble_size: int = 12) -> Assessment:
     verdict, frontier, dims, checks = envelope_check(cfg)
+    neighbours = nearest_flight_tests(cfg)
     nearest = min(checks, key=lambda c: (c.distance, not c.fuel_tested))
     disagreement: float | None = None
     distribution: dict[str, float] | None = None
@@ -180,6 +235,7 @@ def assess(cfg: SimulationConfig, ensemble_size: int = 12) -> Assessment:
     return Assessment(
         verdict, summary, frontier, dims, checks, nearest.campaign,
         disagreement, distribution, predicted, ensemble_size,
+        neighbours, float(neighbours[0]["distance"]) if neighbours else None,  # type: ignore[arg-type]
     )
 
 

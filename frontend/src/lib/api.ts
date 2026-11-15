@@ -1,11 +1,16 @@
 import type {
   AerosolComparison,
   Assessment,
+  AssistantMessage,
+  AssistantReply,
   ChamberQuery,
+  FlexValidation,
   FlowPoint,
   FrontierGrid,
   ModelCard,
+  PsiDataset,
   RiskBoard,
+  SaffireSample,
   Simulation,
 } from "./types";
 
@@ -17,7 +22,13 @@ async function request<T>(path: string, body?: unknown, signal?: AbortSignal): P
     signal,
   });
   if (!res.ok) {
-    throw new Error(`${path} returned ${res.status}`);
+    let detail = "";
+    try {
+      detail = ((await res.json()) as { detail?: string }).detail ?? "";
+    } catch {
+      detail = "";
+    }
+    throw new Error(detail || `${path} returned ${res.status}`);
   }
   return (await res.json()) as T;
 }
@@ -50,4 +61,22 @@ export const api = {
     ),
   risk: (signal?: AbortSignal) => request<RiskBoard>("/api/risk", undefined, signal),
   modelCard: (signal?: AbortSignal) => request<ModelCard>("/api/model-card", undefined, signal),
+  flex: (signal?: AbortSignal) => request<FlexValidation>("/api/flight/flex", undefined, signal),
+  datasets: (signal?: AbortSignal) =>
+    request<{ retrieved_utc: string; datasets: PsiDataset[] }>("/api/flight/datasets", undefined, signal),
+  saffire: (signal?: AbortSignal) => request<{ samples: SaffireSample[] }>("/api/flight/saffire", undefined, signal),
+  assistantStatus: (signal?: AbortSignal) =>
+    request<{ configured: boolean; model: string; provider: string }>("/api/assistant/status", undefined, signal),
+  assistant: (
+    messages: AssistantMessage[],
+    query: ChamberQuery,
+    sensorView: "optical" | "uv",
+    playbackTime: number,
+    signal?: AbortSignal,
+  ) =>
+    request<AssistantReply>(
+      "/api/assistant",
+      { messages, query, sensor_view: sensorView, playback_time_s: playbackTime },
+      signal,
+    ),
 };

@@ -43,6 +43,13 @@ else
 fi
 "$PY" -m pip install --quiet --disable-pip-version-check -r "$ROOT/backend/requirements.txt"
 
+step "NASA PSI flight tables"
+# Uses the copies stored in the repository; pass --force to data.fetch_psi to download them again.
+(cd "$ROOT/backend" && "$PY" -m data.fetch_psi >/dev/null && "$PY" -c "from data.psi_flight import table_row_counts as c; print(sum(c().values()), 'flight records in', len(c()), 'tables')")
+
+step "Model check against FLEX flight tests"
+(cd "$ROOT/backend" && "$PY" -m data.validation | head -n 12)
+
 step "Dataset generation and model training"
 (cd "$ROOT/backend" && "$PY" -m ml.train --regenerate)
 

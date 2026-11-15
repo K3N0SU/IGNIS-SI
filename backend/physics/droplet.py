@@ -65,6 +65,8 @@ class FlameState:
     reynolds: float
     convective_factor: float
     diffusivity: float  # m^2 s^-1 at the film temperature
+    chem_time_factor: float = 1.0
+    water_fraction: float = 0.0
 
 
 def adiabatic_flame_temperature(
@@ -78,6 +80,22 @@ def adiabatic_flame_temperature(
     )
     rise /= (1.0 + (rise / cal.dissociation_cap) ** 6) ** (1.0 / 6.0)
     return ambient.temperature + rise
+
+
+def liquid_water_fraction(fuel: Fuel, diameter_ratio: float, cal: ModelCalibration = DEFAULT_CALIBRATION) -> float:
+    """Volume fraction of water in a droplet that has shrunk to D/D0.
+
+    With beta volumes of water absorbed per volume of fuel burned and phi the
+    fraction of the original fuel still liquid, the droplet volume is
+    (D/D0)^3 = phi + beta (1 - phi), so the water fraction is
+    beta (1 - phi) / (D/D0)^3. Only water-miscible fuels (methanol) absorb.
+    """
+    if not fuel.absorbs_water:
+        return 0.0
+    beta = min(max(cal.water_absorption, 0.0), 0.95)
+    volume = min(max(diameter_ratio, 1e-3), 1.0) ** 3
+    phi = min(max((volume - beta) / (1.0 - beta), 0.0), 1.0)
+    return min(beta * (1.0 - phi) / volume, 1.0)
 
 
 def classical_burning_rate(fuel: Fuel, ambient: Ambient, flame_temperature: float | None = None) -> float:
@@ -98,13 +116,22 @@ def hot_flame_state(
     standoff: float,
     velocity: float,
     cal: ModelCalibration = DEFAULT_CALIBRATION,
+    water_fraction: float = 0.0,
 ) -> FlameState:
     t_inf = ambient.temperature
     t_b = fuel.boiling_point(ambient.pressure_atm)
-    t_ad = adiabatic_flame_temperature(fuel, ambient, cal)
+    # Water dissolved in the droplet co-vaporises with the fuel. It dilutes
+    # the fuel stream, lowering both the flame temperature and the heat
+    # released per unit of liquid vaporised.
+    fuel_share = max(1.0 - water_fraction, 0.05)
+    t_ad = t_inf + (adiabatic_flame_temperature(fuel, ambient, cal) - t_inf) * fuel_share**cal.water_exponent
     y_o = ambient.y_o2
     q_per_o2 = fuel.heat_of_combustion / fuel.stoich_o2_mass
-    kappa = cal.kappa_planck * ambient.pressure_atm * ambient.diluent_props.kappa_factor
+    fractions = ambient.diluent_fractions
+    kappa_blend = fractions["N2"] + cal.co2_kappa_factor * fractions["CO2"] + 0.9 * fractions["He"]
+    kappa = cal.kappa_planck * ambient.pressure_atm * kappa_blend
+    if fuel.key == "methanol":
+        kappa *= cal.methanol_kappa_factor
     flame_diameter = standoff * diameter
     volume = pi / 6.0 * flame_diameter**3
 
@@ -116,15 +143,15 @@ def hot_flame_state(
     for _ in range(8):
         t_f = t_inf + (t_ad - t_inf) * (1.0 - chi)
         t_film = 0.5 * (t_f + t_b)
-        lam = film_conductivity(fuel, ambient, t_film)
+        lam = cal.conductivity_scale * film_conductivity(fuel, ambient, t_film)
         cp = fuel.vapor_cp(t_film)
-        b = max((cp * (t_inf - t_b) + (1.0 - chi) * y_o * q_per_o2) / fuel.h_fg, 1e-3)
+        b = max((cp * (t_inf - t_b) + (1.0 - chi) * y_o * q_per_o2 * fuel_share) / fuel.h_fg, 1e-3)
         alpha = thermal_diffusivity(ambient, t_film)
         re = reynolds(velocity, diameter, kinematic_viscosity(ambient, t_film))
         conv = frossling_factor(re, b)
         k = 8.0 * lam / (fuel.rho_liquid * cp) * log(1.0 + b) * conv
         mdot = 0.25 * pi * fuel.rho_liquid * diameter * k
-        q_gen = mdot * fuel.heat_of_combustion
+        q_gen = mdot * fuel.heat_of_combustion * fuel_share
         q_rad = volume * 4.0 * SIGMA_SB * kappa * max(t_f**4 - t_inf**4, 0.0)
         chi_new = min(q_rad / max(q_gen, 1e-12), 0.95)
         chi = 0.5 * chi + 0.5 * chi_new
@@ -151,6 +178,8 @@ def hot_flame_state(
         reynolds=re,
         convective_factor=conv,
         diffusivity=alpha,
+        chem_time_factor=cal.methanol_chem_factor if fuel.key == "methanol" else 1.0,
+        water_fraction=water_fraction,
     )
 
 
@@ -185,7 +214,7 @@ def cool_flame_state(
     t_b = fuel.boiling_point(ambient.pressure_atm)
     t_cf = cool_flame_temperature(ambient, diameter, velocity, cal)
     t_film = 0.5 * (t_cf + t_b)
-    lam = film_conductivity(fuel, ambient, t_film)
+    lam = cal.conductivity_scale * film_conductivity(fuel, ambient, t_film)
     cp = fuel.vapor_cp(t_film)
     alpha = thermal_diffusivity(ambient, t_film)
     re = reynolds(velocity, diameter, kinematic_viscosity(ambient, t_film))

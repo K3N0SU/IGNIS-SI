@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from contextlib import asynccontextmanager
 from dataclasses import asdict
@@ -11,7 +12,8 @@ import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from data.nasa_psi_corpus import corpus_as_dict, provenance
+from data import psi_flight, validation
+from data.nasa_psi_corpus import corpus_as_dict, datasets, provenance
 from ml import risk_ranker
 from ml.features import LABELS, label_index
 from ml.regime_classifier import RegimeClassifier, load_metrics
@@ -21,10 +23,14 @@ from physics.aerosol import compare_gravity
 from physics.eclss import generate_protocol
 from physics.low_flow import flow_response
 from physics.properties import FUELS, Ambient
+
+FIT_PATH = validation.OUTPUT_PATH.parents[1] / "calibration_fit.json"
 from physics.solver import SimulationConfig, simulate
 
+from . import assistant
 from .schemas import (
     AerosolQuery,
+    AssistantRequest,
     ChamberQuery,
     ClassifierTrace,
     ClassifyOut,
@@ -44,6 +50,7 @@ _state: dict[str, RegimeClassifier] = {}
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _state["classifier"] = ensure_trained()
+    _flex_validation()
     yield
     _state.clear()
 
@@ -60,6 +67,21 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+
+_cache: dict[str, dict[str, object]] = {}
+
+
+def _flex_validation() -> dict[str, object]:
+    """Model-versus-flight comparison for every usable FLEX test, computed once."""
+    if "flex" not in _cache:
+        path = validation.OUTPUT_PATH
+        fit = FIT_PATH.stat().st_mtime if FIT_PATH.exists() else 0.0
+        if path.exists() and path.stat().st_mtime >= fit:
+            _cache["flex"] = json.loads(path.read_text(encoding="utf-8"))
+        else:
+            _cache["flex"] = validation.run()
+    return _cache["flex"]
 
 
 def _classifier() -> RegimeClassifier:
@@ -214,3 +236,48 @@ def model_card() -> dict[str, object]:
     if metrics is None:
         raise HTTPException(status_code=503, detail="Classifier metrics are not available; run `python -m ml.train`.")
     return metrics
+
+
+@app.get("/api/flight/datasets")
+def flight_datasets() -> dict[str, object]:
+    return {
+        "repository": "NASA Physical Sciences Informatics",
+        "retrieved_utc": psi_flight.manifest()["retrieved_utc"],
+        "datasets": datasets(),
+    }
+
+
+@app.get("/api/flight/flex")
+def flight_flex() -> dict[str, object]:
+    report = dict(_flex_validation())
+    report["calibration"] = json.loads(FIT_PATH.read_text(encoding="utf-8")) if FIT_PATH.exists() else None
+    return report
+
+
+@app.get("/api/flight/saffire")
+def flight_saffire() -> dict[str, object]:
+    return {"dataset_dois": ["10.60555/0t15-1z43", "10.60555/2chp-m469", "10.60555/040q-4h36"], "samples": [asdict(s) for s in psi_flight.load_saffire()]}
+
+
+@app.get("/api/assistant/status")
+def assistant_status() -> dict[str, object]:
+    return assistant.status()
+
+
+@app.post("/api/assistant")
+def assistant_chat(request: AssistantRequest) -> dict[str, object]:
+    cfg = _config(request.query)
+    result = simulate(cfg)
+    protocol = generate_protocol(cfg, result)
+    summary = {
+        "summary": result.summary,
+        "events": [{"t_s": round(e.t, 1), "event": e.kind} for e in result.events],
+        "hazard_level": protocol.hazard_level,
+        "headline": protocol.headline,
+        "sensor_view": request.sensor_view,
+        "playback_time_s": request.playback_time_s,
+    }
+    try:
+        return assistant.chat([m.model_dump() for m in request.messages], request.query.model_dump(), summary)
+    except assistant.AssistantError as err:
+        raise HTTPException(status_code=err.status_code, detail=str(err)) from None

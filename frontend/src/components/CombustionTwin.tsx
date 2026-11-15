@@ -54,16 +54,58 @@ const DROPLET_FRAGMENT = /* glsl */ `
   varying vec3 vLocal;
   void main() {
     vec3 n = normalize(vNormal);
-    float ndv = max(dot(n, normalize(vView)), 0.0);
-    float rim = pow(1.0 - ndv, 2.4);
-    float spec = pow(max(dot(n, normalize(vec3(0.45, 0.6, 0.65))), 0.0), 60.0);
-    vec3 body = vec3(0.020, 0.024, 0.030) + uBacklight * vec3(0.05, 0.055, 0.065) * (0.4 + 0.6 * ndv);
-    vec3 col = body + rim * (uRim * uRimGain + uBacklight * vec3(0.20, 0.22, 0.26)) + spec * (0.25 * uBacklight + 0.6 * uRimGain) * vec3(1.0);
+    vec3 v = normalize(vView);
+    float ndv = max(dot(n, v), 0.0);
+    float fresnel = pow(1.0 - ndv, 3.0);
+    vec3 key = normalize(vec3(0.45, 0.6, 0.65));
+    float spec = pow(max(dot(n, normalize(key + v)), 0.0), 140.0);
+    float window = pow(max(dot(n, normalize(vec3(-0.5, -0.4, 0.6))), 0.0), 14.0);
+    // A liquid sphere refracts the backlight toward the side opposite the key light.
+    float refracted = smoothstep(-0.5, 1.0, dot(n, normalize(vec3(-0.35, -0.55, 0.45))));
+    vec3 body = mix(vec3(0.030, 0.035, 0.044), vec3(0.125, 0.140, 0.170), refracted * refracted) * uBacklight;
+    vec3 flameLight = uRim * uRimGain * (0.06 + 0.94 * fresnel);
+    vec3 col = body
+      + flameLight
+      + fresnel * uBacklight * vec3(0.30, 0.34, 0.40)
+      + spec * (0.55 * uBacklight + 0.7 * uRimGain)
+      + window * 0.07 * uBacklight;
     gl_FragColor = vec4(col, 1.0);
   }
 `;
 
-function sample(sim: Simulation, key: SeriesKey, t: number): number {
+const GLOW_VERTEX = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+// Camera-facing quad three shell diameters across. Emission fills the shell
+// interior faintly and decays exponentially outside it, like bloom on a sensor.
+const GLOW_FRAGMENT = /* glsl */ `
+  uniform vec3 uColor;
+  uniform float uIntensity;
+  varying vec2 vUv;
+  void main() {
+    float r = length(vUv - 0.5) * 6.0;
+    float g = r < 1.0 ? 0.15 + 0.23 * r * r : 0.38 * exp(-(r - 1.0) * 2.4);
+    g *= smoothstep(3.0, 2.0, r);
+    float dither = (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;
+    gl_FragColor = vec4(uColor, g * uIntensity + dither);
+  }
+`;
+
+const GLOW_SPAN = 3;
+
+/** Horizontal stretch and downstream shift of the flame under forced flow, in mm. */
+export function flameExtent(flameD: number, dropletD: number, airflow: number): { cx: number; rx: number; ry: number; stretch: number; diameter: number } {
+  const stretch = 1 + Math.min(0.03 * airflow, 0.5);
+  const diameter = Math.max(flameD, dropletD * 1.05);
+  return { cx: 0.3 * (stretch - 1) * diameter, rx: 0.5 * diameter * stretch, ry: 0.5 * diameter, stretch, diameter };
+}
+
+export function sample(sim: Simulation, key: SeriesKey, t: number): number {
   const arr = sim.series[key];
   const x = Math.min(Math.max(t / sim.query.dt_s, 0), arr.length - 1);
   const i = Math.floor(x);
@@ -142,6 +184,26 @@ export function CombustionTwin({
     const haloMat = makeShell();
     const halo = new THREE.Mesh(shellGeo, haloMat);
     flameGroup.add(halo);
+
+    const makeGlow = (): THREE.ShaderMaterial =>
+      new THREE.ShaderMaterial({
+        vertexShader: GLOW_VERTEX,
+        fragmentShader: GLOW_FRAGMENT,
+        uniforms: { uColor: { value: new THREE.Color() }, uIntensity: { value: 0 } },
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        blending: THREE.AdditiveBlending,
+      });
+    const glowGeo = new THREE.PlaneGeometry(1, 1);
+    const flameGlowMat = makeGlow();
+    const flameGlow = new THREE.Mesh(glowGeo, flameGlowMat);
+    flameGlow.renderOrder = 2;
+    flameGroup.add(flameGlow);
+    const sootGlowMat = makeGlow();
+    const sootGlow = new THREE.Mesh(glowGeo, sootGlowMat);
+    sootGlow.renderOrder = 2;
+    flameGroup.add(sootGlow);
 
     const sootPositions = new Float32Array(SOOT_POINTS * 3);
     for (let i = 0; i < SOOT_POINTS; i++) {
@@ -236,7 +298,7 @@ export function CombustionTwin({
 
       const current = simRef.current;
       const target = modeRef.current === "uv" ? 1 : 0;
-      mix += (target - mix) * Math.min(dt * 9, 1);
+      mix += (target - mix) * Math.min(dt * 5, 1);
 
       let d = 3.9;
       let flameD = 0;
@@ -276,7 +338,7 @@ export function CombustionTwin({
       const optical = Math.min(1.25 * Math.pow(Math.max(visible, 0), 0.3), 1.4);
       // The intensified UV channel spans four decades; map log10(I) from
       // 1e-5 (dark signal) to 1 (hot flame) onto display intensity.
-      const uvDisplay = uv > 1e-5 ? Math.min(Math.max((Math.log10(uv) + 5) / 4.2, 0), 1.3) : 0;
+      const uvDisplay = uv > 1e-5 ? Math.min(Math.max((Math.log10(uv) + 5) / 3.4, 0), 1.3) : 0;
       const intensity = optical * (1 - mix) + uvDisplay * mix;
 
       droplet.scale.setScalar(Math.max(d, 0.05));
@@ -285,11 +347,14 @@ export function CombustionTwin({
       (dropletMat.uniforms.uRim.value as THREE.Color).copy(optFlame).lerp(uvFlame, mix);
       (fiber.material as THREE.MeshBasicMaterial).opacity = 0.5 * (1 - 0.7 * mix);
 
-      const stretch = 1 + Math.min(0.03 * airflow, 0.5);
-      const fdDraw = Math.max(flameD, d * 1.05);
-      flameGroup.scale.set(stretch, 1, 1);
-      flameGroup.position.x = 0.5 * (stretch - 1) * fdDraw * 0.6;
+      const extent = flameExtent(flameD, d, airflow);
+      const fdDraw = extent.diameter;
+      flameGroup.scale.set(extent.stretch, 1, 1);
+      flameGroup.position.x = extent.cx;
       flame.scale.setScalar(fdDraw);
+      flameGlow.scale.setScalar(fdDraw * GLOW_SPAN);
+      flameGlowMat.uniforms.uIntensity.value = (0.55 + 0.75 * mix) * intensity;
+      (flameGlowMat.uniforms.uColor.value as THREE.Color).copy(optFlame).lerp(uvFlame, mix);
       flameMat.uniforms.uIntensity.value = intensity;
       flameMat.uniforms.uTime.value = wall;
       (flameMat.uniforms.uColor.value as THREE.Color).copy(optFlame).lerp(uvFlame, mix);
@@ -303,6 +368,9 @@ export function CombustionTwin({
       haloMat.uniforms.uTime.value = wall * 0.6;
       (haloMat.uniforms.uColor.value as THREE.Color).copy(optSoot);
       (haloMat.uniforms.uCore.value as THREE.Color).copy(optSootCore);
+      sootGlow.scale.setScalar(sootShell * 1.04 * GLOW_SPAN);
+      sootGlowMat.uniforms.uIntensity.value = 0.5 * optical * sootLoad * (1 - mix);
+      (sootGlowMat.uniforms.uColor.value as THREE.Color).copy(optSoot);
 
       soot.scale.setScalar(sootShell);
       soot.rotation.y = wall * 0.05;
@@ -339,16 +407,17 @@ export function CombustionTwin({
       cancelAnimationFrame(raf);
       observer.disconnect();
       shellGeo.dispose();
+      glowGeo.dispose();
       sootGeo.dispose();
       sootTexture.dispose();
       streakGeo.dispose();
       droplet.geometry.dispose();
       fiber.geometry.dispose();
-      [flameMat, haloMat, dropletMat, sootMat, streakMat, fiber.material as THREE.Material].forEach((m) => m.dispose());
+      [flameMat, haloMat, flameGlowMat, sootGlowMat, dropletMat, sootMat, streakMat, fiber.material as THREE.Material].forEach((m) => m.dispose());
       renderer.dispose();
       host.removeChild(renderer.domElement);
     };
   }, []);
 
-  return <div ref={hostRef} className="absolute inset-0" data-testid="twin-canvas" />;
+  return <div ref={hostRef} className="absolute inset-0" data-testid="twin-canvas" role="img" aria-label="Rendered view of the burning droplet" />;
 }

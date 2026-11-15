@@ -10,8 +10,10 @@ temperatures.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, fields, replace
 from math import log
+from pathlib import Path
 from typing import Literal
 
 SIGMA_SB = 5.670374419e-8  # W m^-2 K^-4
@@ -43,6 +45,7 @@ class Fuel:
     vapor_cp_max: float
     supports_cool_flame: bool
     soot_index: float  # relative sooting propensity, n-heptane = 1
+    absorbs_water: bool = False  # liquid is miscible with the water produced by the flame
 
     def vapor_cp(self, temperature: float) -> float:
         cp = self.vapor_cp_300 + self.vapor_cp_slope * (temperature - 300.0)
@@ -96,7 +99,7 @@ FUELS: dict[str, Fuel] = {
         heat_of_combustion=19.9e6, stoich_o2_mass=1.50,
         vapor_lambda_300=0.0157, vapor_lambda_exp=1.7,
         vapor_cp_300=1370.0, vapor_cp_slope=1.9, vapor_cp_max=3200.0,
-        supports_cool_flame=False, soot_index=0.02,
+        supports_cool_flame=False, soot_index=0.02, absorbs_water=True,
     ),
 }
 
@@ -120,27 +123,76 @@ DILUENTS: dict[str, Diluent] = {
 
 @dataclass(frozen=True)
 class Ambient:
+    """Chamber atmosphere: oxygen plus one diluent or an N2/CO2/He blend.
+
+    ``diluent`` names the single balance gas. When ``x_co2`` or ``x_he`` is
+    given, the balance is a blend with those mole fractions and nitrogen as
+    the remainder, which is how the FLEX test matrix is specified.
+    """
+
     x_o2: float  # oxygen mole fraction
     pressure_atm: float
     temperature: float = 295.0
     diluent: DiluentKey = "N2"
+    x_co2: float | None = None
+    x_he: float | None = None
+
+    def __post_init__(self) -> None:
+        # Derived mixture properties are fixed for the life of the object and
+        # are read on every right-hand-side evaluation, so compute them once.
+        balance = max(1.0 - self.x_o2, 1e-9)
+        if self.x_co2 is None and self.x_he is None:
+            n2 = 1.0 if self.diluent == "N2" else 0.0
+            co2 = 1.0 if self.diluent == "CO2" else 0.0
+            he = 1.0 if self.diluent == "He" else 0.0
+        else:
+            co2_abs = min(max(self.x_co2 or 0.0, 0.0), balance)
+            he_abs = min(max(self.x_he or 0.0, 0.0), balance - co2_abs)
+            n2, co2, he = (balance - co2_abs - he_abs) / balance, co2_abs / balance, he_abs / balance
+
+        d_n2, d_co2, d_he = DILUENTS["N2"], DILUENTS["CO2"], DILUENTS["He"]
+        dil_mass = n2 * d_n2.molar_mass + co2 * d_co2.molar_mass + he * d_he.molar_mass
+        dil_cp = (n2 * d_n2.molar_mass * d_n2.cp + co2 * d_co2.molar_mass * d_co2.cp + he * d_he.molar_mass * d_he.cp) / dil_mass
+        props = Diluent(
+            key=self.diluent,
+            name="blend",
+            molar_mass=dil_mass,
+            cp=dil_cp,
+            lambda_ratio=n2 * d_n2.lambda_ratio + co2 * d_co2.lambda_ratio + he * d_he.lambda_ratio,
+            kappa_factor=n2 * d_n2.kappa_factor + co2 * d_co2.kappa_factor + he * d_he.kappa_factor,
+        )
+        molar_mass = self.x_o2 * M_O2 + (1.0 - self.x_o2) * dil_mass
+        y_o2 = self.x_o2 * M_O2 / molar_mass
+        cache = {
+            "_fractions": {"N2": n2, "CO2": co2, "He": he},
+            "_props": props,
+            "_molar_mass": molar_mass,
+            "_y_o2": y_o2,
+            "_cp": y_o2 * CP_O2 + (1.0 - y_o2) * dil_cp,
+        }
+        for name, value in cache.items():
+            object.__setattr__(self, name, value)
+
+    @property
+    def diluent_fractions(self) -> dict[str, float]:
+        """Mole fractions of N2, CO2 and He normalised over the non-oxygen part."""
+        return self._fractions  # type: ignore[attr-defined, no-any-return]
 
     @property
     def diluent_props(self) -> Diluent:
-        return DILUENTS[self.diluent]
+        return self._props  # type: ignore[attr-defined, no-any-return]
 
     @property
     def molar_mass(self) -> float:
-        return self.x_o2 * M_O2 + (1.0 - self.x_o2) * self.diluent_props.molar_mass
+        return self._molar_mass  # type: ignore[attr-defined, no-any-return]
 
     @property
     def y_o2(self) -> float:
-        return self.x_o2 * M_O2 / self.molar_mass
+        return self._y_o2  # type: ignore[attr-defined, no-any-return]
 
     @property
     def cp(self) -> float:
-        y = self.y_o2
-        return y * CP_O2 + (1.0 - y) * self.diluent_props.cp
+        return self._cp  # type: ignore[attr-defined, no-any-return]
 
 
 AIR_CP = Ambient(0.21, 1.0).cp
@@ -181,10 +233,32 @@ class ModelCalibration:
     t_reignition: float = 800.0  # K, upper bound of the NTC region
     da_reignition: float = 1.5
     induction_time: float = 0.5  # s
+    # Fuel- and diluent-specific closures, fitted to the FLEX flight table
+    methanol_chem_factor: float = 1.0  # chemical time of methanol relative to n-heptane
+    methanol_kappa_factor: float = 1.0  # radiation of a soot-free methanol flame relative to n-heptane
+    co2_kappa_factor: float = 1.6  # Planck-mean absorption of a CO2-diluted flame relative to N2
+    water_absorption: float = 0.35  # liquid volume of water absorbed per volume of methanol burned
+    water_exponent: float = 1.0  # sensitivity of flame temperature to liquid water fraction
+    conductivity_scale: float = 1.0  # multiplier on the film conductivity
 
     def perturbed(self, scale: dict[str, float]) -> "ModelCalibration":
         values = {k: getattr(self, k) * scale.get(k, 1.0) for k in self.__dataclass_fields__}
         return ModelCalibration(**values)
 
 
-DEFAULT_CALIBRATION = ModelCalibration()
+BASELINE_CALIBRATION = ModelCalibration()
+"""Hand-set constants used as the starting point of the flight-data fit."""
+
+_FIT_PATH = Path(__file__).resolve().parents[1] / "data" / "calibration_fit.json"
+
+
+def load_fitted_calibration(path: Path = _FIT_PATH) -> ModelCalibration:
+    """Baseline constants overridden by the values fitted to FLEX flight data."""
+    if not path.exists():
+        return BASELINE_CALIBRATION
+    fitted = json.loads(path.read_text(encoding="utf-8")).get("parameters", {})
+    known = {f.name for f in fields(ModelCalibration)}
+    return replace(BASELINE_CALIBRATION, **{k: float(v) for k, v in fitted.items() if k in known})
+
+
+DEFAULT_CALIBRATION = load_fitted_calibration()

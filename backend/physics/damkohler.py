@@ -29,6 +29,7 @@ from .properties import DEFAULT_CALIBRATION, Ambient, ModelCalibration
 
 class ExtinctionMode(str, Enum):
     RADIATIVE = "RADIATIVE_LOW_STRAIN"
+    WATER = "WATER_DILUTION"
     BLOWOFF = "CONVECTIVE_BLOWOFF"
     DIFFUSIVE = "DIFFUSIVE_BURNOUT"
 
@@ -60,7 +61,7 @@ def damkohler_hot(
     state: FlameState, ambient: Ambient, velocity: float, cal: ModelCalibration = DEFAULT_CALIBRATION
 ) -> float:
     tau_flow = flow_time(state.flame_diameter, state.diffusivity, velocity)
-    return tau_flow / hot_chemical_time(state.flame_temperature, ambient, cal)
+    return tau_flow / (state.chem_time_factor * hot_chemical_time(state.flame_temperature, ambient, cal))
 
 
 def damkohler_cool(
@@ -76,4 +77,6 @@ def classify_extinction(state: FlameState, velocity: float, diameter_ratio: floa
         return ExtinctionMode.BLOWOFF
     if diameter_ratio <= 0.2:
         return ExtinctionMode.DIFFUSIVE
+    if state.water_fraction > 0.15 and state.radiative_fraction < 0.45:
+        return ExtinctionMode.WATER
     return ExtinctionMode.RADIATIVE

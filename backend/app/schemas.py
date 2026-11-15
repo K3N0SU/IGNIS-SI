@@ -107,3 +107,15 @@ class FrontierQuery(BaseModel):
     d0_mm: float = Field(3.9, ge=0.8, le=6.0)
     pressure_atm: float = Field(1.0, ge=0.3, le=3.0)
     diluent: DiluentName = "N2"
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class AssistantRequest(BaseModel):
+    messages: list[ChatMessage] = Field(min_length=1, max_length=40)
+    query: ChamberQuery
+    sensor_view: Literal["optical", "uv"] = "optical"
+    playback_time_s: float = Field(0.0, ge=0.0)

@@ -20,8 +20,13 @@ if not exist "%PY%" python -m venv "%ROOT%backend\.venv" || goto :fail
 "%PY%" -m pip install --quiet --disable-pip-version-check -r "%ROOT%backend\requirements.txt" || goto :fail
 
 echo.
-echo == Dataset generation and model training ==
+echo == NASA PSI flight tables and model check ==
 pushd "%ROOT%backend"
+"%PY%" -m data.fetch_psi >nul || (popd & goto :fail)
+"%PY%" -m data.validation >nul || (popd & goto :fail)
+
+echo.
+echo == Dataset generation and model training ==
 "%PY%" -m ml.train --regenerate || (popd & goto :fail)
 
 echo.

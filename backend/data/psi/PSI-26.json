@@ -1,0 +1,105 @@
+{
+ "accession": "PSI-26",
+ "title": "Burning and Suppression of Solids",
+ "investigationAcronym": "BASS",
+ "doi": "10.60555/58h4-dy80",
+ "licenseIdentifier": "CC0-1.0",
+ "licenseName": "Creative Commons Zero v1.0 Universal",
+ "licenseLink": "https://spdx.org/licenses/CC0-1.0.html",
+ "objective": "The two main objectives for BASS are to:\n    1.) Begin to bridge the gap between the normal gravity NASA-STD-6001 Test#1 method, ground-based microgravity tests, and actual material flammability in microgravity. The relation between these can be investigated by observing flames burning for the longer times available in flight. Practical, realistic (thicker) fuels in typical geometries will be examined, including wake flames which have characteristics of a fire burning behind another object (for example, a fire burning in tight area which may not be easily accessible).\n    2.) Assess the effectiveness of an inert, gaseous extinguishing agent (similar to that used on ISS) in putting out flames over different materials, geometries, preheating, and flow.",
+ "hypothesis": "BASS experiments were based on the hypothesis that materials in microgravity, with adequate ventilation, burn as well if not better than the same material in normal gravity with other conditions being identical (pressure, oxygen concentration, temperature, etc.) To test this hypothesis with any but the thinnest materials requires extended microgravity time – longer than available in drop towers or parabolic aircraft.",
+ "approach": "The experiment was conducted aboard the International Space Station (ISS) inside the Microgravity Glove Box (MSG). Custom-made fabric samples consisting of 75% cotton and 25% fiberglass (by mass) measuring were used as a fuel source as well as Nomex fabric and Ultem. A Kanthal wire (29-gage)igniter was used to initiate combustion at one end of the fabric. Airflow was controlled using a variable speed fan, with airflow speeds reaching as high as 40 cm/s. The airflow was directed along the fuel surface in either the opposed or concurrent direction.\n\nThis investigation explored two primary air flow configurations; concurrent-flow and opposed-flow. With concurrent-flow air flows in the same direction as the flame spread and in opposed-flow air flows in the opposite direction of flame spread. Flames were observed in the top and edge profiles and data was collected on flame size, shape, color, spread rate, and potential flame quenching. The samples were placed in a small flow duct (76 mm x 76 mm cross section) that allowed for airflow across the fabric. Other sample shapes were utilized as well including spheres and cylinders.",
+ "experimentHardware": "Microgravity Science Glovebox",
+ "flightProgram": "International Space Station (ISS)",
+ "managingNasaCenter": "Glenn Research Center (GRC)",
+ "investigationStartDate": "10-01-2009",
+ "investigationEndDate": "06-30-2013",
+ "projectType": "Microgravity Investigation",
+ "modifiedDate": "19-Mar-2025",
+ "version": 4,
+ "contacts": [
+  {
+   "name": "Sandra L. Olson",
+   "affiliation": "NASA GRC",
+   "roles": [
+    "Project Scientist"
+   ]
+  },
+  {
+   "name": "Paul Ferkul",
+   "affiliation": "NASA GRC",
+   "roles": [
+    "Principal Investigator (PI)"
+   ]
+  },
+  {
+   "name": "Funiaki Takahashi",
+   "affiliation": "Case Western Reserve University",
+   "roles": [
+    "Co-Investigator (Co-I)"
+   ]
+  },
+  {
+   "name": "James T'ien",
+   "affiliation": "Case Western Reserve University",
+   "roles": [
+    "Co-Investigator (Co-I)"
+   ]
+  }
+ ],
+ "publications": [
+  {
+   "title": "The Microgravity Science Glovebox as a Platform for Exploration Research on the International Space Station",
+   "authors": "Spivey Reggie, Luz Paul",
+   "doi": "10.2514/6.2006-941"
+  },
+  {
+   "title": "Opposed-flow flame spread: A comparison of microgravity and normal gravity experiments to establish the thermal regime",
+   "authors": "Bhattacharjee Subrata, Laue Matthew, Carmignani Luca, Ferkul Paul, Olson Sandra",
+   "doi": "10.1016/j.firesaf.2015.11.011"
+  },
+  {
+   "title": "Simplified model for predicting difference between flammability limits of a thin material in normal gravity and microgravity environments",
+   "authors": "Takahashi Shuhei, Ebisawa Tomoya, Bhattacharjee Subrata, Ihara Tadayoshi",
+   "doi": "10.1016/j.proci.2014.07.017"
+  },
+  {
+   "title": "A Correlation for an Effective Flow Velocity for Capturing the Boundary Layer Effect in Opposed-Flow Flame Spread over Thin Fuels",
+   "authors": "S Bhattacharjee, R Nagarkar, Y Nakamura",
+   "doi": "10.1080/00102202.2014.900056"
+  },
+  {
+   "title": "Radiation signature in opposed-flow flame spread",
+   "authors": "Bhattacharjee Subrata, Paolini Christopher P., Miller Fletcher, Nagarkar Rohit",
+   "doi": "10.1504/PCFD.2012.048249"
+  },
+  {
+   "title": "OS24-1 The Effect of Boundary Layer on Blow-Off Extinction in Opposed-Flow Flame Spread: Results of Experiments and Simplified Analysis(invited,Scale modeling on solid combustion,OS24 Scale modeling,FLUID AND THERMODYNAMICS)",
+   "authors": "Bhattacharjee Subrata, Cartnignani Luca",
+   "doi": "10.1299/jsmeatem.2015.14.289"
+  },
+  {
+   "title": "Role of Gas Radiation in the Mechanism of Opposed-Flow Flame Spread in a Microgravity Environment",
+   "authors": "JR Villaraza, L Carmignani, S Bhattacharjee",
+   "doi": ""
+  },
+  {
+   "title": "Thickness and Fuel Preheating Effects on Material Flammability in Microgravity from the BASS Experiment",
+   "authors": "P Ferkul, SL Olson, F Takahashi, M Endo, MC Johnston, JS Tien",
+   "doi": ""
+  },
+  {
+   "title": "A novel apparatus for flame spread study",
+   "authors": "S Bhattacharjee, M Bundy, C Paolini, G Patel, W Tran.",
+   "doi": "10.1016/j.proci.2012.05.076"
+  },
+  {
+   "title": "Opposed-Flow Flame Spread in a Narrow Channel Apparatus over Thin PMMA Sheets",
+   "authors": "GR Bornand, FJ Miller, JM Pepper, SL Olson, IS Wichman",
+   "doi": ""
+  }
+ ],
+ "experimental_tables": [
+  "PSI-26_Experimental table_BASS.csv"
+ ]
+}

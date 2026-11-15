@@ -1,0 +1,347 @@
+{
+ "dataset": "NASA PSI-69 FLEX experimental table",
+ "dataset_doi": "10.60555/mbq8-0451",
+ "fitted_utc": "2026-11-15T18:35:15+00:00",
+ "method": "Nelder-Mead on log-parameters, training set only",
+ "evaluations": 439,
+ "train_tests": 196,
+ "holdout_tests": 65,
+ "loss_initial": 8.7786,
+ "loss_final": 4.1596,
+ "parameters": {
+  "kappa_planck": 1.1596129790751402,
+  "tau_chem_hot": 7.36650356454007e-09,
+  "accumulation_factor": 0.4830172777333159,
+  "conductivity_scale": 0.9709078374392645,
+  "methanol_chem_factor": 0.6375336740324623,
+  "methanol_kappa_factor": 0.592251449492391,
+  "co2_kappa_factor": 1.3686760484851919,
+  "water_absorption": 0.020824239560824347,
+  "water_exponent": 1.6179111185891446
+ },
+ "baseline_parameters": {
+  "kappa_planck": 3.3,
+  "tau_chem_hot": 3.7e-09,
+  "accumulation_factor": 0.27,
+  "conductivity_scale": 1.0,
+  "methanol_chem_factor": 1.0,
+  "methanol_kappa_factor": 1.0,
+  "co2_kappa_factor": 1.6,
+  "water_absorption": 0.35,
+  "water_exponent": 1.0
+ },
+ "metrics": {
+  "baseline_train": {
+   "tests_compared": 196,
+   "all": {
+    "tests": 196,
+    "burning_rate_mm2_s": {
+     "n": 147,
+     "mae": 0.1658,
+     "bias": -0.0945,
+     "rmse": 0.1954,
+     "mape_pct": 32.0,
+     "r2": -1.2825,
+     "pearson_r": 0.5353
+    },
+    "extinction_diameter_ratio": {
+     "n": 145,
+     "mae": 0.2657,
+     "bias": 0.1447,
+     "rmse": 0.3416,
+     "mape_pct": 689709.32,
+     "r2": -0.5723,
+     "pearson_r": 0.5905
+    },
+    "outcome_agreement": 0.7793,
+    "extinction_within_tolerance": 0.4483,
+    "outcome_n": 145,
+    "model_failed_to_ignite": 48
+   },
+   "n-heptane": {
+    "tests": 84,
+    "burning_rate_mm2_s": {
+     "n": 77,
+     "mae": 0.1081,
+     "bias": 0.028,
+     "rmse": 0.1402,
+     "mape_pct": 21.05,
+     "r2": 0.1506,
+     "pearson_r": 0.6378
+    },
+    "extinction_diameter_ratio": {
+     "n": 62,
+     "mae": 0.1876,
+     "bias": -0.0953,
+     "rmse": 0.3112,
+     "mape_pct": 1612942.56,
+     "r2": 0.2318,
+     "pearson_r": 0.7823
+    },
+    "outcome_agreement": 0.8871,
+    "extinction_within_tolerance": 0.6935,
+    "outcome_n": 62,
+    "model_failed_to_ignite": 6
+   },
+   "methanol": {
+    "tests": 112,
+    "burning_rate_mm2_s": {
+     "n": 70,
+     "mae": 0.2292,
+     "bias": -0.2292,
+     "rmse": 0.2419,
+     "mape_pct": 44.04,
+     "r2": -5.4814,
+     "pearson_r": 0.6632
+    },
+    "extinction_diameter_ratio": {
+     "n": 83,
+     "mae": 0.324,
+     "bias": 0.324,
+     "rmse": 0.3627,
+     "mape_pct": 65.2,
+     "r2": -2.7111,
+     "pearson_r": 0.596
+    },
+    "outcome_agreement": 0.6988,
+    "extinction_within_tolerance": 0.2651,
+    "outcome_n": 83,
+    "model_failed_to_ignite": 42
+   }
+  },
+  "baseline_holdout": {
+   "tests_compared": 65,
+   "all": {
+    "tests": 65,
+    "burning_rate_mm2_s": {
+     "n": 49,
+     "mae": 0.1832,
+     "bias": -0.1137,
+     "rmse": 0.2127,
+     "mape_pct": 34.39,
+     "r2": -3.7536,
+     "pearson_r": 0.4759
+    },
+    "extinction_diameter_ratio": {
+     "n": 51,
+     "mae": 0.3461,
+     "bias": 0.1614,
+     "rmse": 0.4168,
+     "mape_pct": 78.83,
+     "r2": -1.9861,
+     "pearson_r": 0.2311
+    },
+    "outcome_agreement": 0.5686,
+    "extinction_within_tolerance": 0.3137,
+    "outcome_n": 51,
+    "model_failed_to_ignite": 16
+   },
+   "n-heptane": {
+    "tests": 24,
+    "burning_rate_mm2_s": {
+     "n": 21,
+     "mae": 0.1085,
+     "bias": 0.0536,
+     "rmse": 0.1569,
+     "mape_pct": 19.25,
+     "r2": -0.8988,
+     "pearson_r": 0.6146
+    },
+    "extinction_diameter_ratio": {
+     "n": 18,
+     "mae": 0.3015,
+     "bias": -0.2216,
+     "rmse": 0.4318,
+     "mape_pct": 49.81,
+     "r2": -1.4138,
+     "pearson_r": 0.607
+    },
+    "outcome_agreement": 0.7222,
+    "extinction_within_tolerance": 0.5,
+    "outcome_n": 18,
+    "model_failed_to_ignite": 3
+   },
+   "methanol": {
+    "tests": 41,
+    "burning_rate_mm2_s": {
+     "n": 28,
+     "mae": 0.2393,
+     "bias": -0.2393,
+     "rmse": 0.2464,
+     "mape_pct": 45.74,
+     "r2": -7.8612,
+     "pearson_r": 0.7402
+    },
+    "extinction_diameter_ratio": {
+     "n": 33,
+     "mae": 0.3704,
+     "bias": 0.3704,
+     "rmse": 0.4083,
+     "mape_pct": 94.67,
+     "r2": -2.907,
+     "pearson_r": 0.7095
+    },
+    "outcome_agreement": 0.4848,
+    "extinction_within_tolerance": 0.2121,
+    "outcome_n": 33,
+    "model_failed_to_ignite": 13
+   }
+  },
+  "fitted_train": {
+   "tests_compared": 196,
+   "all": {
+    "tests": 196,
+    "burning_rate_mm2_s": {
+     "n": 153,
+     "mae": 0.1037,
+     "bias": -0.0225,
+     "rmse": 0.122,
+     "mape_pct": 19.88,
+     "r2": 0.0914,
+     "pearson_r": 0.686
+    },
+    "extinction_diameter_ratio": {
+     "n": 145,
+     "mae": 0.1582,
+     "bias": 0.0179,
+     "rmse": 0.2427,
+     "mape_pct": 689685.84,
+     "r2": 0.2065,
+     "pearson_r": 0.7391
+    },
+    "outcome_agreement": 0.8207,
+    "extinction_within_tolerance": 0.6897,
+    "outcome_n": 145,
+    "model_failed_to_ignite": 40
+   },
+   "n-heptane": {
+    "tests": 84,
+    "burning_rate_mm2_s": {
+     "n": 76,
+     "mae": 0.1078,
+     "bias": 0.0045,
+     "rmse": 0.1323,
+     "mape_pct": 19.98,
+     "r2": 0.2083,
+     "pearson_r": 0.6289
+    },
+    "extinction_diameter_ratio": {
+     "n": 62,
+     "mae": 0.167,
+     "bias": -0.0798,
+     "rmse": 0.2902,
+     "mape_pct": 1612939.86,
+     "r2": 0.3318,
+     "pearson_r": 0.7945
+    },
+    "outcome_agreement": 0.8871,
+    "extinction_within_tolerance": 0.7097,
+    "outcome_n": 62,
+    "model_failed_to_ignite": 7
+   },
+   "methanol": {
+    "tests": 112,
+    "burning_rate_mm2_s": {
+     "n": 77,
+     "mae": 0.0997,
+     "bias": -0.0491,
+     "rmse": 0.1109,
+     "mape_pct": 19.77,
+     "r2": -0.2882,
+     "pearson_r": 0.7692
+    },
+    "extinction_diameter_ratio": {
+     "n": 83,
+     "mae": 0.1516,
+     "bias": 0.0908,
+     "rmse": 0.1999,
+     "mape_pct": 26.21,
+     "r2": -0.1279,
+     "pearson_r": 0.6581
+    },
+    "outcome_agreement": 0.7711,
+    "extinction_within_tolerance": 0.6747,
+    "outcome_n": 83,
+    "model_failed_to_ignite": 33
+   }
+  },
+  "fitted_holdout": {
+   "tests_compared": 65,
+   "all": {
+    "tests": 65,
+    "burning_rate_mm2_s": {
+     "n": 53,
+     "mae": 0.095,
+     "bias": -0.0263,
+     "rmse": 0.1196,
+     "mape_pct": 18.03,
+     "r2": -0.4307,
+     "pearson_r": 0.7105
+    },
+    "extinction_diameter_ratio": {
+     "n": 51,
+     "mae": 0.1622,
+     "bias": -0.0185,
+     "rmse": 0.2537,
+     "mape_pct": 34.16,
+     "r2": -0.1064,
+     "pearson_r": 0.6296
+    },
+    "outcome_agreement": 0.6863,
+    "extinction_within_tolerance": 0.7647,
+    "outcome_n": 51,
+    "model_failed_to_ignite": 11
+   },
+   "n-heptane": {
+    "tests": 24,
+    "burning_rate_mm2_s": {
+     "n": 21,
+     "mae": 0.1009,
+     "bias": 0.033,
+     "rmse": 0.1428,
+     "mape_pct": 18.01,
+     "r2": -0.5746,
+     "pearson_r": 0.6034
+    },
+    "extinction_diameter_ratio": {
+     "n": 18,
+     "mae": 0.2439,
+     "bias": -0.1885,
+     "rmse": 0.3714,
+     "mape_pct": 43.2,
+     "r2": -0.7857,
+     "pearson_r": 0.7058
+    },
+    "outcome_agreement": 0.7778,
+    "extinction_within_tolerance": 0.6111,
+    "outcome_n": 18,
+    "model_failed_to_ignite": 3
+   },
+   "methanol": {
+    "tests": 41,
+    "burning_rate_mm2_s": {
+     "n": 32,
+     "mae": 0.0911,
+     "bias": -0.0653,
+     "rmse": 0.1015,
+     "mape_pct": 18.05,
+     "r2": -0.3318,
+     "pearson_r": 0.8418
+    },
+    "extinction_diameter_ratio": {
+     "n": 33,
+     "mae": 0.1176,
+     "bias": 0.0743,
+     "rmse": 0.1556,
+     "mape_pct": 29.22,
+     "r2": 0.4327,
+     "pearson_r": 0.7823
+    },
+    "outcome_agreement": 0.6364,
+    "extinction_within_tolerance": 0.8485,
+    "outcome_n": 33,
+    "model_failed_to_ignite": 8
+   }
+  }
+ }
+}

@@ -6,41 +6,41 @@ State of the repository as of 2026-11-15, for whoever picks it up next.
 
 | Item | Status | Evidence |
 |---|---|---|
-| Physics engine (`backend/physics/`) | Complete | 76 pytest cases pass; `scripts/calibration_report.py` |
-| Experiment corpus (`backend/data/nasa_psi_corpus.py`) | Complete as metadata | Structure tested; values are literature summaries, see below |
-| Classifier, risk ranker, uncertainty detector (`backend/ml/`) | Complete | 99.6 % held-out accuracy on simulated traces |
-| FastAPI service (`backend/app/`) | Complete | 13 endpoint checks pass directly and through the frontend proxy |
-| Next.js workbench and analytics (`frontend/`) | Complete | `tsc --noEmit` and `next build` clean; reviewed in Chrome at 1920×1080 and 1440×900 |
-| `start.sh`, `start.bat` | Complete | Both run end to end with `--verify` on Windows 11 (Git Bash and cmd) |
-| `demo_30s.mp4` | Recorded | 1920×1080, 60 fps, H.264, under 30 s; frames inspected for each required beat |
+| NASA PSI flight tables (`backend/data/psi/`) | Downloaded from psi.nasa.gov, 11 investigations, 1,091 records | Checksums verified by a test on every run |
+| Physics engine | Complete, calibrated to FLEX | 104 pytest cases pass |
+| Calibration and validation | Fitted on 196 FLEX tests, scored on 65 held out | `backend/data/calibration_fit.json` |
+| Classifier, risk ranker, uncertainty and nearest-test search | Complete | 98.5 % on held-out simulated burns |
+| Assistant agent (Google Gemini) | Works end to end with a key | Live exchanges run in the browser; unit-tested with a stubbed provider |
+| Frontend: Workbench, Analytics, Flight data, guided tour | Complete | `tsc` and `next build` clean; reviewed in Chrome at 1920x1080, 1440x900, 1366x768 |
+| `start.sh`, `start.bat` | Run end to end with `--verify` on Windows 11 | See the last section of this file for the final run |
+| `demo_30s.mp4` | 29.0 s, 1920x1080, 60 fps, H.264 with AAC audio | Frames inspected for every beat; the audio was not listened to |
 
-Not run: `start.sh` on macOS or Linux, any browser other than Chrome, and any comparison against real PSI telemetry.
-
-## How to run
-
-`./start.sh` or `start.bat`. See the README for URLs and options. Generated artifacts (`backend/ml/artifacts/`, `backend/data/generated/`) are git-ignored and rebuilt by the start script in about 15 seconds; the API also builds them on first start if they are missing.
+Not run: macOS or Linux, any browser other than Chrome, mobile layouts, a screen reader.
 
 ## Things that are not obvious
 
-- **Telemetry is simulated.** Nothing in the repository is flight data. If you obtain PSI files, the natural integration point is a loader beside `nasa_psi_corpus.py` plus a calibration fit that replaces the hand-tuned constants in `ModelCalibration`.
-- **Calibration is coupled.** `kappa_planck`, `tau_chem_hot` and `activation_temp_hot` together set the radiative-extinction diameter, the blowoff velocity and the burnout diameter. Changing one moves all three. Rerun `scripts/calibration_report.py` and the `TestExtinction` cases after any change.
-- **Regime labels drive the classifier.** `RADIATIVE_EXTINCTION` is the 1.2 s transient after a radiative `Da = 1` crossing. An earlier definition based on `Da < 3` before the crossing was not separable from the sensor channels and dropped accuracy to 89 %.
-- **Feature schema is checked at load.** If `FEATURE_NAMES` or `LABELS` change, the stored model is rejected and retrained automatically.
-- **The playback clock is outside React** (`frontend/src/lib/playback.ts`). The 3D twin and chart cursors read it in their own animation frames; only components that call `usePlayback()` re-render, at the sample rate.
-- **Airflow default.** The workbench starts in "fans restart after flame-out" mode with 0 cm/s, which is identical to still air. Raising the airflow slider alone produces the re-ignition scenario.
-- **Windows file locks.** A running `next start` locks files in `node_modules`; both start scripts free ports 3000 and 8000 before installing.
+- **Python 3.14 instability.** On this machine (Python 3.14.6, the only version installed) worker processes died intermittently during the parallel calibration with interpreter errors such as `Fatal Python error: _PyEval_EvalFrameDefault: Executing a cache`, and once a constants lookup returned the wrong type. The calibration script rebuilds its pool and retries, and the hot path was restructured to do far fewer lookups, after which several thousand serial simulations ran clean. This looks like an interpreter fault, not a logic error, but it was not isolated. **For anything long-running, use Python 3.12 or 3.13.**
+- **Calibration is loaded at import.** `physics/properties.py` reads `data/calibration_fit.json`. Delete that file to fall back to the hand-set baseline; rerun `python -m data.calibrate` to refit. The fit continues from the stored result when one exists.
+- **Tests depend on the stored fit.** A refit can move thresholds in `tests/test_physics.py`; they are written against flight benchmarks with tolerances, so small moves pass.
+- **Regime labels drive the classifier.** `RADIATIVE_EXTINCTION` is the 1.2 s transient after the flame is lost. A definition based on closeness to extinction before the event was not separable from the sensor channels.
+- **Assistant model name.** `gemini-flash-latest` by default; override with `GEMINI_MODEL`. `gemini-2.5-flash` is retired for new keys.
+- **Secrets.** `backend/.env` is git-ignored. Never commit it. `backend/.env.example` documents the variables.
+- **The playback clock is outside React** (`frontend/src/lib/playback.ts`); the 3D view and chart cursors read it in their own animation frames.
+- **Adding a view** is one entry in `frontend/src/lib/views.ts`, one page under `src/app/`, and one branch in `Shell.tsx`.
+- **Windows file locks.** A running `next start` locks files in `node_modules`; the start scripts free ports 3000 and 8000 before installing.
 
 ## Known limitations
 
-- The cool-flame temperature and re-ignition criterion are algebraic closures, not detailed low-temperature chemistry.
-- The aerosol kernel uses the continuum form with slip correction; it is less accurate for primaries well below 30 nm.
-- The risk ranker uses handbook constants and a single microgravity shift of the oxygen limit for all materials.
-- The workbench is designed for 1920×1080. At 1440×900 the ECLSS and citation panels scroll internally.
-- Bibliographic entries have no DOIs and were not checked against publisher records.
+- Burning-rate error on held-out flight tests is 18 %. Methanol near its flammability limit is the weakest area: the model declines to ignite 8 of 41 held-out methanol tests that burned on orbit.
+- Cool-flame temperature and the re-ignition criterion are algebraic closures, and no flight data constrains re-ignition under flow.
+- The chamber controls accept one diluent at a time; the solver itself handles N2/CO2/He blends, which is how FLEX tests are simulated.
+- Saffire IV to VI tables were not found in PSI, so exploration-atmosphere flame spread is cited, not used.
+- The material ranking uses handbook constants.
 
 ## Suggested next steps
 
-1. Fit `ModelCalibration` to digitised FLEX `D²(t)` histories and report residuals in the citation inspector.
-2. Replace the cool-flame closure with a two-step reduced mechanism and compare extinction diameters across pressure.
-3. Add a solid-fuel flame-spread model so BASS-II and Saffire conditions can be simulated, not only cited.
-4. Expose the calibration-ensemble spread as bands on the telemetry charts.
+1. Move to Python 3.12 or 3.13 and rerun the calibration to confirm the fit is reproducible.
+2. Use the CFI table (PSI-39) to calibrate n-dodecane and helium dilution, which are currently uncalibrated.
+3. Digitise `D²(t)` histories from the FLEX reports and fit the cool-flame branch, which is now tied only to two published values.
+4. Add a solid-fuel flame-spread model so BASS-II and Saffire conditions can be simulated.
+5. Show the calibration-ensemble spread as bands on the telemetry charts.

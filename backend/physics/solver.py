@@ -23,7 +23,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 from .damkohler import ExtinctionMode, classify_extinction, damkohler_cool, damkohler_hot
-from .droplet import FlameState, cool_flame_state, hot_flame_state
+from .droplet import FlameState, cool_flame_state, hot_flame_state, liquid_water_fraction
 from .low_flow import reignition_margin
 from .properties import DEFAULT_CALIBRATION, FUELS, Ambient, DiluentKey, FuelKey, ModelCalibration
 
@@ -58,13 +58,15 @@ class SimulationConfig:
     flow_mode: FlowMode = "CONTINUOUS"
     restore_delay_s: float = 3.0
     diluent: DiluentKey = "N2"
+    x_co2: float | None = None
+    x_he: float | None = None
     ambient_temperature: float = 295.0
     t_max_s: float = 60.0
     dt_s: float = 0.05
 
     @property
     def ambient(self) -> Ambient:
-        return Ambient(self.x_o2, self.pressure_atm, self.ambient_temperature, self.diluent)
+        return Ambient(self.x_o2, self.pressure_atm, self.ambient_temperature, self.diluent, self.x_co2, self.x_he)
 
 
 @dataclass(frozen=True)
@@ -99,6 +101,8 @@ def simulate(cfg: SimulationConfig, cal: ModelCalibration = DEFAULT_CALIBRATION)
     ambient = cfg.ambient
     d0 = cfg.d0_mm * 1e-3
     d2_min = BURNOUT_D2_FRACTION * d0**2
+    # Absorbed water replaces part of the fuel volume, slowing the regression of a miscible droplet.
+    shrink = 1.0 - cal.water_absorption if fuel.absorbs_water else 1.0
     u_set = cfg.airflow_cm_s * 1e-2
     continuous = cfg.flow_mode == "CONTINUOUS"
 
@@ -114,7 +118,8 @@ def simulate(cfg: SimulationConfig, cal: ModelCalibration = DEFAULT_CALIBRATION)
     reignition_count = 0
 
     def hot_state(y: np.ndarray, u: float) -> FlameState:
-        return hot_flame_state(fuel, ambient, sqrt(max(y[0], 1e-14)), max(y[1], 1.05), u, cal)
+        d = sqrt(max(y[0], 1e-14))
+        return hot_flame_state(fuel, ambient, d, max(y[1], 1.05), u, cal, liquid_water_fraction(fuel, d / d0, cal))
 
     def cool_state(y: np.ndarray, u: float) -> FlameState:
         return cool_flame_state(fuel, ambient, sqrt(max(y[0], 1e-14)), u, cal)
@@ -147,7 +152,7 @@ def simulate(cfg: SimulationConfig, cal: ModelCalibration = DEFAULT_CALIBRATION)
             def rhs(_t: float, yy: np.ndarray) -> list[float]:
                 s = hot_state(yy, u)
                 tau_d = cal.standoff_relax_coeff * s.flame_diameter**2 / s.diffusivity
-                return [-s.burning_rate, (s.standoff_target - yy[1]) / tau_d]
+                return [-s.burning_rate * shrink, (s.standoff_target - yy[1]) / tau_d]
 
             def extinction(_t: float, yy: np.ndarray) -> float:
                 return damkohler_hot(hot_state(yy, u), ambient, u, cal) - 1.0
@@ -203,7 +208,10 @@ def simulate(cfg: SimulationConfig, cal: ModelCalibration = DEFAULT_CALIBRATION)
                 extinction_mode = cause
                 if not continuous:
                     restore_at = t + cfg.restore_delay_s
-            label = "radiative heat loss" if cause is ExtinctionMode.RADIATIVE else "convective blowoff"
+            label = {
+                ExtinctionMode.RADIATIVE: "radiative heat loss",
+                ExtinctionMode.WATER: "water absorbed into the droplet",
+            }.get(cause, "convective blowoff")
             events.append(SimEvent(t, f"HOT_FLAME_EXTINCTION_{cause.name}", f"Visible flame lost to {label} at D = {d_now * 1e3:.2f} mm"))
             y = y_end[:1].copy()
             if fuel.supports_cool_flame and damkohler_cool(cool_state(y, u), u, cal) > 1.0:
@@ -314,7 +322,7 @@ def _sample(
         s["airflow_cm_s"][i] = u * 1e2
 
         if seg.mode == "hot":
-            st = hot_flame_state(fuel, ambient, d, max(float(y[1]), 1.05), u, cal)
+            st = hot_flame_state(fuel, ambient, d, max(float(y[1]), 1.05), u, cal, liquid_water_fraction(fuel, d / d0, cal))
             da_h = damkohler_hot(st, ambient, u, cal)
             s["damkohler_hot"][i] = da_h
             s["uv_intensity"][i] = (st.heat_release / 50.0) * exp(9000.0 * (1.0 / 2000.0 - 1.0 / st.flame_temperature))
@@ -340,7 +348,8 @@ def _sample(
 
         s["flame_diameter_mm"][i] = st.flame_diameter * 1e3
         s["flame_temperature_k"][i] = st.flame_temperature
-        s["burning_rate_mm2_s"][i] = st.burning_rate * 1e6
+        observed = 1.0 - cal.water_absorption if fuel.absorbs_water and seg.mode == "hot" else 1.0
+        s["burning_rate_mm2_s"][i] = st.burning_rate * observed * 1e6
         s["heat_release_w"][i] = st.heat_release
         s["radiative_fraction"][i] = st.radiative_fraction
         s["radiometer_w_m2"][i] = st.radiative_loss / (4.0 * pi * RADIOMETER_DISTANCE_M**2)
@@ -368,7 +377,7 @@ def _sample(
     for key in ("radiometer_w_m2", "uv_intensity", "visible_luminosity", "flame_temperature_k", "flame_diameter_mm", "heat_release_w"):
         s[key] = _lag(s[key], dt, SENSOR_LAG_S)
 
-    extinction_times = [e.t for e in events if e.kind == "HOT_FLAME_EXTINCTION_RADIATIVE"]
+    extinction_times = [e.t for e in events if e.kind in ("HOT_FLAME_EXTINCTION_RADIATIVE", "HOT_FLAME_EXTINCTION_WATER")]
     regime: list[str] = []
     for i, ti in enumerate(t):
         in_window = any(te <= ti <= te + EXTINCTION_TRANSIENT_S for te in extinction_times)

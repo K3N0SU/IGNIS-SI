@@ -76,6 +76,8 @@ export interface Citation {
   title: string;
   venue: string;
   year: number;
+  doi: string;
+  url: string;
 }
 
 export interface Provenance {
@@ -86,6 +88,11 @@ export interface Provenance {
   facility: string;
   platform: string;
   period: string;
+  accession: string;
+  dataset_doi: string;
+  dataset_url: string;
+  dataset_license: string;
+  flight_tests: number;
   fuel_tested_in_reference: boolean;
   within_reference_envelope: Record<string, boolean>;
   citations: Citation[];
@@ -148,6 +155,8 @@ export interface Assessment {
   outcome_distribution: Record<string, number> | null;
   predicted_outcome: string | null;
   ensemble_size: number;
+  nearest_tests: FlightNeighbour[];
+  nearest_distance: number | null;
 }
 
 export interface RiskEntry {
@@ -221,4 +230,142 @@ export interface ModelCard {
   test_rows: number;
   test_scenarios: number;
   training_data: string;
+}
+
+export interface FlightNeighbour {
+  identifier: string;
+  test_number: number;
+  date: string;
+  fuel: string;
+  same_fuel: boolean;
+  d0_mm: number;
+  x_o2: number;
+  pressure_atm: number;
+  diluent: string;
+  x_co2: number;
+  x_he: number;
+  burning_rate_mm2_s: number | null;
+  extinction_diameter_mm: number | null;
+  extinction_ratio: number | null;
+  burn_time_s: number | null;
+  test_end: string;
+  distance: number;
+}
+
+export interface FlightComparison {
+  test_number: number;
+  identifier: string;
+  date: string;
+  fuel: string;
+  diluent: string;
+  pressure_atm: number;
+  x_o2: number;
+  x_co2: number;
+  x_he: number;
+  d0_mm: number;
+  test_end: string;
+  k_flight: number | null;
+  k_model: number | null;
+  ext_ratio_flight: number | null;
+  ext_ratio_model: number | null;
+  burn_time_flight: number | null;
+  hot_time_model: number;
+  early_extinction_flight: boolean | null;
+  early_extinction_model: boolean;
+  model_ignited: boolean;
+  model_cool_flame: boolean;
+}
+
+export interface ErrorStats {
+  n: number;
+  mae?: number;
+  bias?: number;
+  rmse?: number;
+  mape_pct?: number;
+  r2?: number;
+  pearson_r?: number;
+}
+
+export interface FuelMetrics {
+  tests: number;
+  burning_rate_mm2_s: ErrorStats;
+  extinction_diameter_ratio: ErrorStats;
+  outcome_agreement: number | null;
+  extinction_within_tolerance: number | null;
+  outcome_n: number;
+  model_failed_to_ignite: number;
+}
+
+export type ValidationMetrics = { tests_compared: number } & Record<"all" | "n-heptane" | "methanol", FuelMetrics>;
+
+export interface CalibrationFit {
+  dataset: string;
+  dataset_doi: string;
+  fitted_utc: string;
+  method: string;
+  evaluations: number;
+  train_tests: number;
+  holdout_tests: number;
+  loss_initial: number;
+  loss_final: number;
+  parameters: Record<string, number>;
+  baseline_parameters: Record<string, number>;
+  metrics: Record<"baseline_train" | "baseline_holdout" | "fitted_train" | "fitted_holdout", ValidationMetrics>;
+}
+
+export interface FlexValidation {
+  dataset: string;
+  dataset_doi: string;
+  metrics: ValidationMetrics;
+  tests: FlightComparison[];
+  calibration: CalibrationFit | null;
+}
+
+export interface PsiDataset {
+  accession: string;
+  key: string;
+  title: string;
+  doi: string;
+  doi_url: string;
+  license: string;
+  landing_page: string;
+  hardware: string;
+  start: string;
+  end: string;
+  objective: string;
+  tables: { file: string; rows: number; sha256: string }[];
+  rows: number;
+}
+
+export interface SaffireSample {
+  mission: string;
+  sample: string;
+  material: string;
+  airflow_cm_s: number | null;
+  flow_direction: string;
+  oxygen_pct: string;
+  burn_time: string;
+  microgravity_burn_length: string;
+  normal_gravity_burn_length: string;
+  microgravity_spread_rate: string;
+  normal_gravity_spread_rate: string;
+}
+
+export interface AssistantMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AssistantAction {
+  type: "apply_scenario";
+  query: ChamberQuery;
+  sensor_view: "optical" | "uv" | null;
+  reason: string;
+}
+
+export interface AssistantReply {
+  reply: string;
+  actions: AssistantAction[];
+  tool_calls: { name: string; args: Record<string, unknown> }[];
+  model: string;
 }

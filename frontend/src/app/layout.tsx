@@ -6,8 +6,9 @@ import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "IGNIS-SI // ISS-DESTINY CIR-FLEX2",
-  description: "Microgravity spacecraft fire-safety workbench: cool-flame detection, ventilation re-ignition prediction and ECLSS response.",
+  title: "IGNIS-SI: Spacecraft fire safety workbench",
+  description:
+    "Microgravity spacecraft fire-safety workbench: cool-flame detection, ventilation re-ignition prediction and life-support response.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

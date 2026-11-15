@@ -67,6 +67,26 @@ await page.click('[data-testid="nav-workbench"]');
 await page.waitForTimeout(1200);
 await page.screenshot({ path: `${outDir}/06_workbench_1440.png` });
 
+await page.setViewportSize({ width: 1366, height: 768 });
+await page.waitForTimeout(800);
+await page.screenshot({ path: `${outDir}/07_workbench_1366.png` });
+await page.click('[data-testid="nav-analytics"]');
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${outDir}/08_analytics_1366.png` });
+
+await page.setViewportSize({ width: 1920, height: 1080 });
+await page.click('[data-testid="tour-launch"]');
+await page.waitForTimeout(15000);
+await page.screenshot({ path: `${outDir}/09_tour.png` });
+await page.click('[data-testid="tour-launch"]');
+
+// The API-down screen is expected to log failed requests, so it gets its own page without the error listener.
+const offline = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+await offline.route("**/api/**", (route) => route.abort());
+await offline.goto(BASE, { waitUntil: "domcontentloaded" });
+await offline.waitForSelector('[data-testid="api-error"]');
+await offline.screenshot({ path: `${outDir}/10_api_down.png` });
+
 await browser.close();
 console.log(JSON.stringify({ outDir, consoleErrors: errors }, null, 2));
 process.exit(errors.length ? 1 : 0);
