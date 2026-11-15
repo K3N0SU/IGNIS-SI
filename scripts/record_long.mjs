@@ -122,6 +122,10 @@ await say("UV sensor", "The UV sensor disagrees. An invisible cool flame near 70
 await s.click('[data-testid="sensor-mode"] [data-value="optical"]');
 await hold(1.6);
 await s.click('[data-testid="sensor-mode"] [data-value="uv"]');
+await s.zoomOut();
+await s.seek(12);
+await s.setPlaying(true);
+await s.zoom(TWIN, 1.24, "top");
 await say("Still burning", "Switch back and forth: the same fire, invisible to one sensor and plain to the other.", 7);
 await say("Classifier", "The classifier catches it from the radiometer, UV and gas sensors alone, with no camera input.", 7);
 
@@ -193,7 +197,9 @@ await replay(2.4, 1);
 await s.click('[data-testid="assistant-launch"]');
 await page.waitForSelector('[data-testid="assistant-panel"]');
 await s.caption("Assistant", "Or just ask. The assistant runs the model and checks NASA's records for you.");
-await s.click(`[data-testid="assistant-panel"] button:has-text("${QUESTION.slice(0, 22)}")`);
+const ask = `[data-testid="assistant-panel"] button:not([disabled]):has-text("${QUESTION.slice(0, 22)}")`;
+await page.waitForSelector(ask, { timeout: 8000 });
+await s.click(ask);
 await page.waitForSelector('[data-testid="assistant-reply"]', { timeout: 9000 }).catch(() => undefined);
 await hold(9);
 await s.zoom('[data-testid="assistant-panel"]', 1.35);

@@ -109,7 +109,9 @@ if (reply) {
   await s.click('[data-testid="assistant-launch"]');
   await s.caption("Assistant", "Ask it anything. It runs the model and checks NASA flight records.");
   await page.waitForSelector('[data-testid="assistant-panel"]');
-  await s.click(`[data-testid="assistant-panel"] button:has-text("${QUESTION.slice(0, 24)}")`);
+  const ask = `[data-testid="assistant-panel"] button:not([disabled]):has-text("${QUESTION.slice(0, 24)}")`;
+  await page.waitForSelector(ask, { timeout: 8000 });
+  await s.click(ask);
   await page.waitForSelector('[data-testid="assistant-reply"]', { timeout: 6000 }).catch(() => undefined);
   await s.until(23.4);
   await s.click('[data-testid="assistant-launch"]');
