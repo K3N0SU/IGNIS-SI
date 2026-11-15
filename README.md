@@ -4,7 +4,7 @@
 
 A spacecraft fire-safety workbench built on NASA flight data. It shows the fire a camera cannot see, predicts what happens when the cabin fans come back on, and tells you whether NASA has ever tested the condition you are looking at.
 
-Two films of the running application are in this directory: `demo_30s.mp4` (30 seconds) and `demo_5min.mp4` (a five-minute walkthrough of every view).
+The scripts in `scripts/` record two films of the running application: a 30-second demo and a five-minute walkthrough of every view.
 
 ## The problem
 
@@ -97,8 +97,6 @@ For n-heptane in air at 1 atm the model reproduces the central FLEX result close
 | Compare by fuel, oxygen, airflow and sensors | Investigations table and expandable sensor lists; FLEX test map with fuel filter |
 | AI-powered | Tool-using assistant, machine-learning fire-state classifier, calibration ensemble |
 | Inform Moon and Mars fire safety | Artemis atmosphere in the risk ranking; response protocol; explicit flagging of untested conditions |
-
-`SUBMISSION.md` holds the submission text, the AI-use disclosure and a checklist.
 
 ## Assessment against the Space Apps judging criteria
 

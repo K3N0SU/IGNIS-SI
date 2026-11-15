@@ -33,3 +33,10 @@ Thumbs.db
 
 # Local assistant session notes
 .claude/
+
+# Kept locally, not published
+HANDOFF.md
+SUBMISSION.md
+SUBMISSION_FORM.md
+demo_30s.mp4
+demo_5min.mp4
