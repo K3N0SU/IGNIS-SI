@@ -31,7 +31,10 @@ FlowMode = Literal["CONTINUOUS", "RESTORE_AFTER_EXTINCTION"]
 
 RADIOMETER_DISTANCE_M = 0.10
 SENSOR_LAG_S = 0.25
-EXTINCTION_LABEL_WINDOW_S = (0.4, 1.2)
+# Samples in this window after a radiative Da = 1 crossing are labelled as the
+# extinction transient: the hot flame is collapsing and the sensor signals are
+# relaxing toward their cool-flame or dark levels.
+EXTINCTION_TRANSIENT_S = 1.2
 REIGNITION_RISK_MARGIN_K = 45.0
 BURNOUT_D2_FRACTION = 4.0e-4
 
@@ -365,10 +368,10 @@ def _sample(
     for key in ("radiometer_w_m2", "uv_intensity", "visible_luminosity", "flame_temperature_k", "flame_diameter_mm", "heat_release_w"):
         s[key] = _lag(s[key], dt, SENSOR_LAG_S)
 
-    extinction_times = [e.t for e in events if e.kind.startswith("HOT_FLAME_EXTINCTION")]
+    extinction_times = [e.t for e in events if e.kind == "HOT_FLAME_EXTINCTION_RADIATIVE"]
     regime: list[str] = []
     for i, ti in enumerate(t):
-        in_window = any(te - EXTINCTION_LABEL_WINDOW_S[0] <= ti <= te + EXTINCTION_LABEL_WINDOW_S[1] for te in extinction_times)
+        in_window = any(te <= ti <= te + EXTINCTION_TRANSIENT_S for te in extinction_times)
         if raw_mode[i] == "hot":
             regime.append(Regime.RADIATIVE_EXTINCTION.value if in_window else Regime.HOT_FLAME.value)
         elif raw_mode[i] == "cool":
@@ -378,6 +381,8 @@ def _sample(
                 regime.append(Regime.RE_IGNITION_RISK.value)
             else:
                 regime.append(Regime.INVISIBLE_COOL_FLAME.value)
+        elif in_window:
+            regime.append(Regime.RADIATIVE_EXTINCTION.value)
         else:
             burned = s["d2_mm2"][i] <= 1.5 * BURNOUT_D2_FRACTION * (cfg.d0_mm**2) or any(e.kind == "BURNOUT" for e in events)
             regime.append(Regime.BURNOUT.value if burned else Regime.EXTINGUISHED.value)
