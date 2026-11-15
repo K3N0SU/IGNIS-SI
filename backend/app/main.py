@@ -12,7 +12,7 @@ import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from data import psi_flight, validation
+from data import investigations, psi_flight, validation
 from data.nasa_psi_corpus import corpus_as_dict, datasets, provenance
 from ml import risk_ranker
 from ml.features import LABELS, label_index
@@ -291,3 +291,12 @@ def assistant_chat(request: AssistantRequest) -> dict[str, object]:
         return assistant.chat([m.model_dump() for m in request.messages], request.query.model_dump(), summary)
     except assistant.AssistantError as err:
         raise HTTPException(status_code=err.status_code, detail=str(err)) from None
+
+
+@app.post("/api/investigations")
+def compare_investigations(query: ChamberQuery) -> dict[str, object]:
+    scenario = investigations.Scenario(query.fuel, query.d0_mm, query.x_o2, query.pressure_atm, query.airflow_cm_s)
+    return {
+        "scoring": "50 % experiment type, 35 % share of your conditions inside what was flown, 15 % amount of tabulated flight data",
+        "investigations": investigations.compare(scenario),
+    }

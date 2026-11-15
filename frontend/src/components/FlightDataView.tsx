@@ -10,11 +10,11 @@ import type {
   FlexValidation,
   FlightComparison,
   FuelMetrics,
-  PsiDataset,
   SaffireSample,
   Simulation,
 } from "@/lib/types";
 
+import { InvestigationsPanel } from "./InvestigationsPanel";
 import { Panel, Segmented, Skeleton, Stat } from "./ui";
 
 type FuelFilter = "all" | "n-heptane" | "methanol";
@@ -234,7 +234,6 @@ export function FlightDataView({
   assessment: Assessment | null;
 }) {
   const [flex, setFlex] = useState<FlexValidation | null>(null);
-  const [datasets, setDatasets] = useState<PsiDataset[] | null>(null);
   const [saffire, setSaffire] = useState<SaffireSample[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [fuel, setFuel] = useState<FuelFilter>("all");
@@ -242,10 +241,9 @@ export function FlightDataView({
 
   useEffect(() => {
     const ctl = new AbortController();
-    Promise.all([api.flex(ctl.signal), api.datasets(ctl.signal), api.saffire(ctl.signal)])
-      .then(([f, d, s]) => {
+    Promise.all([api.flex(ctl.signal), api.saffire(ctl.signal)])
+      .then(([f, s]) => {
         setFlex(f);
-        setDatasets(d.datasets);
         setSaffire(s.samples);
       })
       .catch(() => {
@@ -259,7 +257,6 @@ export function FlightDataView({
   const fit = flex?.calibration ?? null;
   const before: FuelMetrics | null = fit ? fit.metrics.baseline_holdout.all : null;
   const after: FuelMetrics | null = fit ? fit.metrics.fitted_holdout.all : (flex?.metrics.all ?? null);
-  const totalRows = datasets ? datasets.reduce((n, d) => n + d.rows, 0) : 0;
   const nearest = assessment?.nearest_tests ?? [];
   const modelRate = sim?.summary.mean_hot_burning_rate_mm2_s ?? null;
 
@@ -447,45 +444,7 @@ export function FlightDataView({
         ) : null}
       </Panel>
 
-      <Panel
-        className="col-span-7"
-        title="NASA datasets in this workbench"
-        subtitle={datasets ? `${datasets.length} investigations, ${totalRows.toLocaleString("en-US")} test records, public domain` : "Loading"}
-        bodyClassName="thin-scroll overflow-y-auto"
-      >
-        {datasets ? (
-          <table className="w-full text-[12px]" data-testid="datasets">
-            <thead className="sticky top-0 bg-panel">
-              <tr className="border-b border-line text-left text-[11px] text-muted">
-                <th className="px-3.5 py-2 font-medium">Investigation</th>
-                <th className="py-2 font-medium">Title</th>
-                <th className="py-2 text-right font-medium">Records</th>
-                <th className="py-2 pl-5 font-medium">Dataset DOI</th>
-                <th className="px-3.5 py-2 text-right font-medium">License</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datasets.map((d) => (
-                <tr key={d.accession} className="border-b border-line/60 last:border-b-0">
-                  <td className="px-3.5 py-1.5">
-                    <span className="text-fg">{d.key}</span> <span className="num text-[11px] text-muted">{d.accession}</span>
-                  </td>
-                  <td className="max-w-0 truncate py-1.5 pr-3 text-muted" style={{ width: "44%" }}>{d.title}</td>
-                  <td className="num py-1.5 text-right">{d.rows}</td>
-                  <td className="py-1.5 pl-5">
-                    <a href={d.doi_url} target="_blank" rel="noreferrer" className="num text-uv underline-offset-2 hover:underline">
-                      {d.doi}
-                    </a>
-                  </td>
-                  <td className="num px-3.5 py-1.5 text-right text-muted">{d.license}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <Skeleton lines={8} className="p-3.5" />
-        )}
-      </Panel>
+      <InvestigationsPanel query={query} className="col-span-7" />
     </div>
   );
 }

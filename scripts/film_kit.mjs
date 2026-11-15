@@ -1,8 +1,9 @@
 // Shared tooling for recording films of the running application.
 //
 // Picture comes from the Chromium compositor through the DevTools screencast
-// API. The pointer, captions, title cards and camera moves are drawn in the
-// page by this module; none of them are part of the application.
+// API. Captions, title cards and camera moves are drawn in the page by this
+// module; none of them are part of the application. No pointer is shown:
+// controls are driven with real input events and are seen to move.
 
 import { execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -17,6 +18,20 @@ export const HEIGHT = 1080;
 export const ZOOM_SETTLE_MS = 1150;
 export const MARK = '<div class="mark"><div class="ring"><i></i></div><h1>IGNIS-SI</h1></div>';
 export const panel = (title) => `section[aria-label="${title}"]`;
+
+// The bundled encoder occasionally dies with an access violation on this
+// platform; the work is idempotent, so run it again before giving up.
+function run(file, args, options = {}) {
+  let last;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return execFileSync(file, args, options);
+    } catch (err) {
+      last = err;
+    }
+  }
+  throw last;
+}
 
 export async function launch() {
   for (const channel of ["chrome", "msedge", undefined]) {
@@ -48,12 +63,6 @@ function overlayScript() {
       #film-caption.on { opacity: 1; transform: translate(-50%, 0); }
       #film-caption .k { font: 600 12px ${FONT}; letter-spacing: 0.12em; text-transform: uppercase; color: #8B949E; margin-bottom: 5px; }
       #film-caption .t { font: 500 25px ${FONT}; color: #F3F4F6; line-height: 1.3; }
-      #film-pointer { position: fixed; z-index: 99999; left: -60px; top: -60px; width: 30px; height: 30px; pointer-events: none;
-        filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)); }
-      #film-ripple { position: fixed; z-index: 99997; width: 46px; height: 46px; margin: -23px 0 0 -23px; border: 2px solid #F3F4F6;
-        border-radius: 50%; opacity: 0; pointer-events: none; }
-      #film-ripple.go { animation: film-ripple 520ms ease-out; }
-      @keyframes film-ripple { from { opacity: 0.9; transform: scale(0.25); } to { opacity: 0; transform: scale(1.15); } }
       .film-stage { transition: transform 1100ms cubic-bezier(0.65, 0, 0.35, 1); will-change: transform; }
     `;
     document.head.appendChild(style);
@@ -79,26 +88,6 @@ function overlayScript() {
         caption.classList.add("on");
       }, 180);
     };
-
-    const pointer = document.createElement("div");
-    pointer.id = "film-pointer";
-    pointer.innerHTML =
-      '<svg viewBox="0 0 24 24" width="30" height="30"><path d="M4 2.5 L4 19 L8.6 14.9 L11.6 21.6 L14.4 20.3 L11.4 13.7 L17.6 13.7 Z" fill="#F3F4F6" stroke="#090A0D" stroke-width="1.3" stroke-linejoin="round"/></svg>';
-    document.body.appendChild(pointer);
-    const ripple = document.createElement("div");
-    ripple.id = "film-ripple";
-    document.body.appendChild(ripple);
-    window.addEventListener("mousemove", (e) => {
-      pointer.style.left = `${e.clientX - 5}px`;
-      pointer.style.top = `${e.clientY - 3}px`;
-    }, true);
-    window.addEventListener("mousedown", (e) => {
-      ripple.style.left = `${e.clientX}px`;
-      ripple.style.top = `${e.clientY}px`;
-      ripple.classList.remove("go");
-      void ripple.offsetWidth;
-      ripple.classList.add("go");
-    }, true);
 
     window.filmZoom = (selector, scale, anchor) => {
       const bar = document.querySelector("header");
@@ -170,24 +159,18 @@ export async function openStage(browser, { framesDir, everyNthFrame = 1, quality
     },
     box,
     glide,
-    hover: async (selector, fx = 0.5, fy = 0.5) => {
-      const b = await box(selector);
-      await glide(b.x + b.width * fx, b.y + b.height * fy, 40);
-    },
     click: async (selector) => {
       const b = await box(selector);
-      await glide(b.x + b.width / 2, b.y + b.height / 2);
-      await page.waitForTimeout(140);
-      await page.mouse.down();
-      await page.waitForTimeout(60);
-      await page.mouse.up();
+      await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+      // Park the pointer away from the controls so no hover state lingers.
+      await page.mouse.move(WIDTH - 4, HEIGHT - 4);
     },
+    select: (selector, value) => page.selectOption(selector, value),
     seek: async (simTime) => {
       const b = await box('[data-testid="timeline"]');
       const total = Number(await page.getAttribute('[data-testid="timeline"]', "data-duration"));
-      await glide(b.x + Math.min(simTime / total, 0.995) * b.width, b.y + b.height / 2, 26);
-      await page.mouse.down();
-      await page.mouse.up();
+      await page.mouse.click(b.x + Math.min(simTime / total, 0.995) * b.width, b.y + b.height / 2);
+      await page.mouse.move(WIDTH - 4, HEIGHT - 4);
     },
     speed: (value) => page.locator(`button[data-value="${value}"]`).last().click().catch(() => undefined),
     // Playback stops by itself at the end of a burn, so set the state explicitly
@@ -203,7 +186,7 @@ export async function openStage(browser, { framesDir, everyNthFrame = 1, quality
       const current = await page.locator(selector).first().evaluate((el) => (Number(el.value) - Number(el.min)) / (Number(el.max) - Number(el.min)));
       const x0 = b.x + 8 + current * (b.width - 16);
       const x1 = b.x + 8 + fraction * (b.width - 16);
-      await glide(x0, y, 30);
+      await page.mouse.move(x0, y);
       await page.mouse.down();
       const steps = 36;
       for (let i = 1; i <= steps; i++) {
@@ -212,6 +195,7 @@ export async function openStage(browser, { framesDir, everyNthFrame = 1, quality
         await page.waitForTimeout(ms / steps);
       }
       await page.mouse.up();
+      await page.mouse.move(WIDTH - 4, HEIGHT - 4);
     },
     start: async () => {
       await cdp.send("Page.startScreencast", { format: "jpeg", quality, maxWidth: WIDTH, maxHeight: HEIGHT, everyNthFrame });
@@ -244,7 +228,7 @@ export function encode({ frames, workDir, framesName, score, output, fps, maxDur
   const captured = frames[frames.length - 1].ts - frames[0].ts;
   const length = Math.min(captured, maxDuration - 0.2);
   const silent = resolve(workDir, `${framesName}_silent.mp4`);
-  execFileSync(
+  run(
     ffmpegPath,
     [
       "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", list, "-t", String(length),
@@ -253,7 +237,7 @@ export function encode({ frames, workDir, framesName, score, output, fps, maxDur
     ],
     { cwd: workDir, stdio: "inherit" },
   );
-  execFileSync(
+  run(
     ffmpegPath,
     [
       "-y", "-loglevel", "error", "-i", silent, "-i", score,
@@ -265,7 +249,7 @@ export function encode({ frames, workDir, framesName, score, output, fps, maxDur
   rmSync(silent, { force: true });
 
   const probe = JSON.parse(
-    execFileSync(ffprobe.path, [
+    run(ffprobe.path, [
       "-v", "error", "-show_entries", "stream=codec_type,codec_name,width,height,avg_frame_rate:format=duration,size", "-of", "json", output,
     ]).toString(),
   );
@@ -282,7 +266,7 @@ export function encode({ frames, workDir, framesName, score, output, fps, maxDur
 export function stills(output, dir, times) {
   mkdirSync(dir, { recursive: true });
   for (const t of times) {
-    execFileSync(ffmpegPath, [
+    run(ffmpegPath, [
       "-y", "-loglevel", "error", "-ss", String(t), "-i", output, "-frames:v", "1", "-vf", "scale=960:540",
       resolve(dir, `t${String(Math.round(t)).padStart(3, "0")}.png`),
     ]);

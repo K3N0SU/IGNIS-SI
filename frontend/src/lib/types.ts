@@ -369,3 +369,34 @@ export interface AssistantReply {
   tool_calls: { name: string; args: Record<string, unknown> }[];
   model: string;
 }
+
+export interface TestedRange {
+  low: number;
+  high: number;
+  unit: string;
+  source: string;
+}
+
+export interface Investigation {
+  rank: number;
+  key: string;
+  name: string;
+  full_name: string;
+  type: string;
+  period: string;
+  platform: string;
+  fuels: string[];
+  oxygen: TestedRange | null;
+  pressure: TestedRange | null;
+  airflow: TestedRange | null;
+  diagnostics: string[];
+  records: number;
+  accessions: string[];
+  dataset_dois: string[];
+  summary: string;
+  findings: string[];
+  papers: { title: string; doi: string; url: string }[];
+  relevance: number;
+  coverage: number;
+  why: string;
+}

@@ -7,7 +7,7 @@ State of the repository as of 2026-11-15, for whoever picks it up next.
 | Item | Status | Evidence |
 |---|---|---|
 | NASA PSI flight tables (`backend/data/psi/`) | Downloaded from psi.nasa.gov, 11 investigations, 1,091 records | Checksums verified by a test on every run |
-| Physics engine | Complete, calibrated to FLEX | 104 pytest cases pass |
+| Physics engine | Complete, calibrated to FLEX | 107 pytest cases pass, on Python 3.13 |
 | Calibration and validation | Fitted on 196 FLEX tests, scored on 65 held out | `backend/data/calibration_fit.json` |
 | Classifier, risk ranker, uncertainty and nearest-test search | Complete | 98.5 % on held-out simulated burns |
 | Assistant agent (Google Gemini) | Works end to end with a key | Live exchanges run in the browser; unit-tested with a stubbed provider |
@@ -21,7 +21,7 @@ Not run: macOS or Linux, any browser other than Chrome, mobile layouts, a screen
 
 ## Things that are not obvious
 
-- **Python 3.14 instability.** On this machine (Python 3.14.6, the only version installed) worker processes died intermittently during the parallel calibration with interpreter errors such as `Fatal Python error: _PyEval_EvalFrameDefault: Executing a cache`, and once a constants lookup returned the wrong type. The same fault later killed the API process while it served two requests at once. Three mitigations are in place: the solver's hot path does far fewer lookups, the API runs solver work from one thread at a time (`backend/app/serial.py`), and a supervisor restarts the API if it dies (`scripts/serve_backend.py`). After that, 1,200 concurrent requests ran with no failure and no restart. This looks like an interpreter fault, not a logic error, but it was not isolated. **For anything long-running, use Python 3.12 or 3.13.** Installing one needs an administrator prompt on this machine and was not done.
+- **Python 3.14 instability.** On this machine (Python 3.14.6, the only version installed) worker processes died intermittently during the parallel calibration with interpreter errors such as `Fatal Python error: _PyEval_EvalFrameDefault: Executing a cache`, and once a constants lookup returned the wrong type. The same fault later killed the API process while it served two requests at once. Three mitigations are in place: the solver's hot path does far fewer lookups, the API runs solver work from one thread at a time (`backend/app/serial.py`), and a supervisor restarts the API if it dies (`scripts/serve_backend.py`). After that, 1,200 concurrent requests ran with no failure and no restart. This looks like an interpreter fault, not a logic error, but it was not isolated. Python 3.13 was then installed and `backend/.venv` rebuilt on it; all tests pass there. The mitigations stay in place. The start scripts prefer 3.13 or 3.12 when creating the environment.
 - **Calibration is loaded at import.** `physics/properties.py` reads `data/calibration_fit.json`. Delete that file to fall back to the hand-set baseline; rerun `python -m data.calibrate` to refit. The fit continues from the stored result when one exists.
 - **Tests depend on the stored fit.** A refit can move thresholds in `tests/test_physics.py`; they are written against flight benchmarks with tolerances, so small moves pass.
 - **Regime labels drive the classifier.** `RADIATIVE_EXTINCTION` is the 1.2 s transient after the flame is lost. A definition based on closeness to extinction before the event was not separable from the sensor channels.
@@ -31,6 +31,8 @@ Not run: macOS or Linux, any browser other than Chrome, mobile layouts, a screen
 - **Adding a view** is one entry in `frontend/src/lib/views.ts`, one page under `src/app/`, and one branch in `Shell.tsx`.
 - **Stopping the API.** `python scripts/serve_backend.py --stop` stops the supervisor and the API together. Killing only the process on port 8000 makes the supervisor start a new one.
 - **Film encoding.** `ffmpeg-static` crashed once with an access violation at `-preset slow` on the five-minute film; `film_kit.mjs` and `record_demo.mjs` now use `-preset medium -threads 8`.
+- **Recording crashes.** On this machine the film recorder (Node) and the bundled encoder each crashed at random with access violations. `film_kit.mjs` retries the encoder; rerun the recorder if it dies.
+- **Challenge fit.** The challenge is "Flame in Freefall". `backend/data/investigations.py` and `InvestigationsPanel.tsx` are the summarise, rank and compare feature it asks for; `SUBMISSION.md` holds the submission text.
 - **Windows file locks.** A running `next start` locks files in `node_modules`; the start scripts free ports 3000 and 8000 before installing.
 
 ## Known limitations
@@ -43,7 +45,7 @@ Not run: macOS or Linux, any browser other than Chrome, mobile layouts, a screen
 
 ## Suggested next steps
 
-1. Move to Python 3.12 or 3.13 and rerun the calibration to confirm the fit is reproducible.
+1. Rerun the calibration on Python 3.13 to confirm the fit is reproducible.
 2. Use the CFI table (PSI-39) to calibrate n-dodecane and helium dilution, which are currently uncalibrated.
 3. Digitise `D²(t)` histories from the FLEX reports and fit the cool-flame branch, which is now tied only to two published values.
 4. Add a solid-fuel flame-spread model so BASS-II and Saffire conditions can be simulated.

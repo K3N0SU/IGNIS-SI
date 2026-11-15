@@ -232,3 +232,29 @@ class TestFlightEndpoints:
     def test_uncertainty_returns_neighbours(self, client: TestClient) -> None:
         body = client.post("/api/uncertainty?ensemble=0", json={}).json()
         assert body["nearest_tests"][0]["identifier"] == "181F001"
+
+
+class TestInvestigations:
+    def test_ranking_for_droplet_scenario(self) -> None:
+        from data.investigations import Scenario, compare
+
+        rows = compare(Scenario("n-heptane", 3.9, 0.21, 1.0, 0.0))
+        assert [r["rank"] for r in rows] == list(range(1, len(rows) + 1))
+        assert rows[0]["key"] == "FLEX" and rows[0]["coverage"] == 1.0
+        scores = [float(r["relevance"]) for r in rows]
+        assert scores == sorted(scores, reverse=True) and all(0.0 <= v <= 100.0 for v in scores)
+        for r in rows:
+            assert r["diagnostics"] and r["summary"] and r["why"]
+
+    def test_airflow_outside_flex_is_explained(self) -> None:
+        from data.investigations import Scenario, compare
+
+        rows = {r["key"]: r for r in compare(Scenario("n-heptane", 3.9, 0.21, 1.0, 8.0))}
+        assert "airflow" in rows["FLEX"]["why"] and rows["FLEX"]["coverage"] < 1.0
+        assert rows["BASS-II"]["coverage"] >= rows["FLEX"]["coverage"]
+
+    def test_endpoint(self, client: TestClient) -> None:
+        body = client.post("/api/investigations", json={}).json()
+        first = body["investigations"][0]
+        assert first["key"] == "FLEX" and first["dataset_dois"] == ["10.60555/mbq8-0451"]
+        assert first["oxygen"]["source"] == "flight_table"

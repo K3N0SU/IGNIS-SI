@@ -81,8 +81,11 @@ const artemis = await page.locator('[data-testid="risk-table"] tbody tr').count(
 check("risk table filters by atmosphere", all === 18 && artemis === 6, `${all} -> ${artemis}`);
 
 await page.click('[data-testid="nav-flight"]');
-await page.waitForSelector('[data-testid="datasets"] tbody tr', { timeout: 60000 });
-check("flight view lists eleven NASA investigations", (await page.locator('[data-testid="datasets"] tbody tr').count()) === 11);
+await page.waitForSelector('[data-testid="investigations"] tbody tr', { timeout: 60000 });
+check("investigations are compared and ranked", (await page.locator('[data-testid="investigations"] tbody tr').count()) === 8);
+check("FLEX ranks first for a droplet scenario", (await page.locator('[data-testid="investigations"] tbody tr').first().getAttribute("data-investigation")) === "FLEX");
+await page.locator('[data-testid="investigations"] tbody tr').first().click();
+check("an investigation expands to findings, sensors and DOIs", /10\.60555\/mbq8-0451/.test(await text('[data-testid="investigations"]')));
 await page.waitForSelector('[data-testid="flight-matrix"] circle', { timeout: 15000 }).catch(() => undefined);
 check("flight view plots the FLEX tests", (await page.locator('[data-testid="flight-matrix"] circle').count()) > 250);
 check("calibration results are shown", /held-out/i.test(await text('[data-testid="calibration"]')));

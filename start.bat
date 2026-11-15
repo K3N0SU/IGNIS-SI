@@ -16,7 +16,10 @@ call :stop_servers
 
 echo.
 echo == Backend dependencies ==
-if not exist "%PY%" python -m venv "%ROOT%backend\.venv" || goto :fail
+rem Prefer Python 3.13 or 3.12 when the launcher has one; 3.14.6 showed interpreter faults.
+if not exist "%PY%" (
+  py -3.13 -m venv "%ROOT%backend\.venv" 2>nul || py -3.12 -m venv "%ROOT%backend\.venv" 2>nul || python -m venv "%ROOT%backend\.venv" || goto :fail
+)
 "%PY%" -m pip install --quiet --disable-pip-version-check -r "%ROOT%backend\requirements.txt" || goto :fail
 
 echo.

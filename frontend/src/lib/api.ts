@@ -7,6 +7,7 @@ import type {
   FlexValidation,
   FlowPoint,
   FrontierGrid,
+  Investigation,
   ModelCard,
   PsiDataset,
   RiskBoard,
@@ -64,6 +65,8 @@ export const api = {
   flex: (signal?: AbortSignal) => request<FlexValidation>("/api/flight/flex", undefined, signal),
   datasets: (signal?: AbortSignal) =>
     request<{ retrieved_utc: string; datasets: PsiDataset[] }>("/api/flight/datasets", undefined, signal),
+  investigations: (q: ChamberQuery, signal?: AbortSignal) =>
+    request<{ scoring: string; investigations: Investigation[] }>("/api/investigations", q, signal),
   saffire: (signal?: AbortSignal) => request<{ samples: SaffireSample[] }>("/api/flight/saffire", undefined, signal),
   assistantStatus: (signal?: AbortSignal) =>
     request<{ configured: boolean; model: string; provider: string }>("/api/assistant/status", undefined, signal),

@@ -1,6 +1,8 @@
 # IGNIS-SI
 
-**A spacecraft fire-safety workbench built on NASA flight data.** It shows the fire a camera cannot see, predicts what happens when the cabin fans come back on, and tells you whether NASA has ever tested the condition you are looking at.
+**An entry for the NASA Space Apps 2026 challenge "Flame in Freefall: AI-Powered Fire Safety Insights from Microgravity Combustion Data".**
+
+A spacecraft fire-safety workbench built on NASA flight data. It shows the fire a camera cannot see, predicts what happens when the cabin fans come back on, and tells you whether NASA has ever tested the condition you are looking at.
 
 Two films of the running application are in this directory: `demo_30s.mp4` (30 seconds) and `demo_5min.mp4` (a five-minute walkthrough of every view).
 
@@ -16,14 +18,14 @@ The standard first response to a spacecraft fire is to stop ventilation. If the 
 |---|---|
 | **Workbench** | Set fuel, droplet size, oxygen, pressure and fan airflow. Watch the burn in 3D through an optical camera or a UV sensor, with synchronised sensor charts (the closest real NASA test is drawn on the droplet-size chart), a plain-language fire state, a step-by-step life-support response and the evidence behind the prediction. |
 | **Analytics** | Compare cabin materials across the ISS, 10.2 psia and Artemis atmospheres; see which conditions NASA has flown; see how fire intensity responds to airflow; see how smoke particles grow in orbit. |
-| **Flight data** | Browse all 261 usable FLEX droplet burns, see the model plotted against flight measurements, and open every NASA dataset used, with its DOI. |
+| **Flight data** | Browse all 261 usable FLEX droplet burns, see the model plotted against flight measurements, and compare NASA's investigations by fuel, oxygen, airflow and sensors, ranked for your scenario, each with its findings and DOI. |
 | **Assistant** | Ask a question in plain language. It runs the simulation, looks up flight tests and sets up the workbench to show you the answer. |
 
 A guided tour in the top bar walks through the whole story in about 90 seconds.
 
 ## Quick start
 
-Requirements: Python 3.11 or newer and Node.js 20 or newer. Chrome or Edge is needed only to re-record the film.
+Requirements: Python 3.11 to 3.13 (3.13 recommended; 3.14.6 showed interpreter faults) and Node.js 20 or newer. Chrome or Edge is needed only to re-record the film.
 
 ```bash
 ./start.sh            # macOS, Linux, Git Bash
@@ -85,14 +87,27 @@ For n-heptane in air at 1 atm the model reproduces the central FLEX result close
 - **The "UV OH*" channel** is modelled as an intensified ultraviolet band. Real cool flames emit mainly excited formaldehyde with a trace of OH*, three to four orders of magnitude weaker than a hot flame; the model uses that ratio.
 - **Smoke detectors.** Scattering theory implemented here says aged smoke aggregates blind *ionization* detectors (response falls to about 4 % of fresh smoke), while light-scattering response rises and then levels off. The panel reports what the model computes.
 
+## How it answers the challenge
+
+| The challenge asks for | Where it is |
+|---|---|
+| Summarise decades of microgravity combustion results | Investigations panel with findings, period, fuels and sources; the assistant summarises on request |
+| Rank them | Relevance ranking of investigations for the current scenario, with the scoring rule shown; material risk ranking |
+| Explain them | Plain-language fire state, glossary, a reason for every ranked investigation, the assistant, the guided tour |
+| Compare by fuel, oxygen, airflow and sensors | Investigations table and expandable sensor lists; FLEX test map with fuel filter |
+| AI-powered | Tool-using assistant, machine-learning fire-state classifier, calibration ensemble |
+| Inform Moon and Mars fire safety | Artemis atmosphere in the risk ranking; response protocol; explicit flagging of untested conditions |
+
+`SUBMISSION.md` holds the submission text, the AI-use disclosure and a checklist.
+
 ## Assessment against the Space Apps judging criteria
 
 | Criterion | Evidence in this project | Honest gap |
 |---|---|---|
 | **Impact** | Addresses a real crew-safety hazard: a fire that is invisible to the standard optical check, and a standard response (fan restart) that can make it worse. Produces a concrete response protocol with oxygen, pressure and airflow targets. | The response protocol is a decision aid. It has not been reviewed by flight operations. |
 | **Creativity** | Shows the same fire through two sensors side by side; turns "has this been tested?" into a first-class answer with the nearest real tests; an assistant that operates the workbench instead of only chatting. | The 3D view is a visualisation of the model, not a reconstruction of flight video. |
-| **Validity** | Physics from the droplet-combustion literature; constants fitted to 196 real ISS tests and scored on 65 held out; 104 unit tests plus browser and load tests; every source has a DOI. | Model error is still 18 % on burning rate. Methanol near its flammability limit is the weakest area. Re-ignition under flow has no flight data. |
-| **Relevance** | Uses eleven NASA PSI investigations directly, including the FLEX discovery of cool flames, and extends them to the Artemis 34 % oxygen atmosphere. | Saffire IV to VI tables were not found in PSI at retrieval time, so exploration-atmosphere flame-spread data is cited, not used. |
+| **Validity** | Physics from the droplet-combustion literature; constants fitted to 196 real ISS tests and scored on 65 held out; 107 unit tests plus browser and load tests; every source has a DOI. | Model error is still 18 % on burning rate. Methanol near its flammability limit is the weakest area. Re-ignition under flow has no flight data. |
+| **Relevance** | Uses eleven NASA PSI investigations directly; summarises, ranks, explains and compares them by fuel, oxygen, airflow and sensors as the challenge asks; extends to the Artemis 34 % oxygen atmosphere. | Saffire IV to VI tables were not found in PSI at retrieval time, so exploration-atmosphere flame-spread data is cited, not used. |
 | **Presentation** | Plain-language fire state, guided tour, glossary tooltips, a 30-second film and a five-minute walkthrough, one-command start, and this document. | Designed for desktop at 1920x1080; smaller windows scroll inside panels. Not tested on mobile. |
 
 ## How it works
@@ -106,7 +121,7 @@ backend/
              validation.py, nasa_psi_corpus.py, calibration_fit.json
   ml/        regime classifier, material risk ranker, uncertainty and nearest-test search
   app/       FastAPI service and the assistant agent
-  tests/     104 pytest cases
+  tests/     107 pytest cases
 frontend/    Next.js, three.js, Recharts
 scripts/     API supervisor, smoke, browser and load tests, screenshots, film recorders, score synthesiser
 ```
@@ -121,6 +136,7 @@ scripts/     API supervisor, smoke, browser and load tests, screenshots, film re
 |---|---|---|
 | POST | `/api/simulate` | Time series, fire states, events, classifier trace, response protocol, provenance |
 | POST | `/api/uncertainty` | Coverage verdict, per-parameter ranges, nearest flight tests, model disagreement |
+| POST | `/api/investigations` | NASA investigations compared and ranked for a scenario |
 | GET | `/api/flight/flex` | Every usable FLEX test with the model's prediction, error metrics and the calibration report |
 | GET | `/api/flight/datasets` | NASA investigations with DOI, license and table checksums |
 | GET | `/api/flight/saffire` | Saffire sample results |
@@ -149,9 +165,9 @@ python make_score.py && node record_demo.mjs    # re-record demo_30s.mp4
 python make_score.py .capture/score_long.wav --seconds 300 && node record_long.mjs    # demo_5min.mp4
 ```
 
-Checks run on the final code: 104 unit tests, the endpoint smoke test, an 18-step browser test, and three load runs of 400 concurrent requests each with no failed request and no service restart.
+Checks run on the final code: 107 unit tests, the endpoint smoke test, a 20-step browser test, and three load runs of 400 concurrent requests each with no failed request and no service restart.
 
-About the films: camera moves, the pointer, captions and title cards are drawn by the recorder and are not part of the application. The music is synthesised by `scripts/make_score.py` and carries no third-party rights. One edit is made for time in both films: the assistant's answer is requested from the live service just before recording and replayed when the question is asked, because a live answer takes 8 to 16 seconds.
+About the films: camera moves, captions and title cards are drawn by the recorder and are not part of the application. No pointer is shown; the controls are driven with real input and are seen to move. The music is synthesised by `scripts/make_score.py` and carries no third-party rights. One edit is made for time in both films: the assistant's answer is requested from the live service just before recording and replayed when the question is asked, because a live answer takes 8 to 16 seconds.
 
 ## References
 

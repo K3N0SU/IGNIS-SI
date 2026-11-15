@@ -42,6 +42,7 @@ CHECKS: list[Check] = [
     ("GET", "/api/flight/flex", None, lambda b: len(b["tests"]) > 250 and b["calibration"] is not None),
     ("GET", "/api/flight/saffire", None, lambda b: len(b["samples"]) >= 10),
     ("GET", "/api/assistant/status", None, lambda b: "configured" in b),
+    ("POST", "/api/investigations", {}, lambda b: len(b["investigations"]) == 8 and b["investigations"][0]["key"] == "FLEX"),
     (
         "POST", "/api/classify",
         {"t": [0, 0.1, 0.2, 0.3], "radiometer_w_m2": [0.5] * 4, "uv_intensity": [2e-3] * 4, "co_o2_ratio": [0.35] * 4},

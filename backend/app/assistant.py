@@ -20,7 +20,7 @@ from typing import Any
 
 import httpx
 
-from data import psi_flight
+from data import investigations, psi_flight
 from data.nasa_psi_corpus import datasets
 from ml import risk_ranker
 from ml.uncertainty import assess
@@ -46,6 +46,7 @@ Core physics to explain when relevant, in plain language:
 - The fuel can keep burning as a "cool flame" near 700 K that emits no visible light. A colour camera shows nothing; UV and gas sensors still detect it. It produces carbon monoxide.
 - Restarting cabin ventilation while a cool flame is present supplies oxygen and can re-ignite the hot flame.
 - Lowering oxygen with nitrogen or carbon dioxide, or lowering pressure, removes the flame; the protocol computes the targets.
+- When asked what NASA has learned, which experiments matter, or to compare or rank investigations, call compare_investigations and explain the ranking in plain language.
 
 Rules:
 1. Every number you state must come from a tool result or from the current state supplied with the request. If you need a number, call a tool. Never estimate or invent values, test identifiers or citations.
@@ -94,6 +95,11 @@ TOOLS: list[dict[str, Any]] = [
         "name": "get_model_validation",
         "description": "How well the model reproduces NASA flight tests it was not fitted to: error in burning rate, extinction diameter and outcome, and which datasets are used.",
         "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "compare_investigations",
+        "description": "Summarise, compare and rank NASA's microgravity combustion investigations (FLEX, FLEX-2, CFI, CFI-G, BASS, Saffire, SAME) for a condition: fuels, oxygen, pressure and airflow ranges, sensors, number of flight records, key findings and a relevance ranking with reasons.",
+        "parameters": {"type": "object", "properties": _SCENARIO_PROPERTIES},
     },
     {
         "name": "apply_scenario",
@@ -247,6 +253,12 @@ def _execute(name: str, args: dict[str, Any], current: dict[str, Any], actions: 
         return tool_material_risk(str(args.get("atmosphere", "ALL")))
     if name == "get_model_validation":
         return tool_model_validation()
+    if name == "compare_investigations":
+        q = scenario_from_args(args, current)
+        scenario = investigations.Scenario(q["fuel"], q["d0_mm"], q["x_o2"], q["pressure_atm"], q["airflow_cm_s"])
+        rows = investigations.compare(scenario)
+        keep = ("rank", "name", "full_name", "type", "period", "fuels", "oxygen", "pressure", "airflow", "diagnostics", "records", "dataset_dois", "findings", "relevance", "why")
+        return {"source": "NASA PSI investigation records and cited papers", "investigations": [{k: r[k] for k in keep} for r in rows]}
     if name == "apply_scenario":
         query = scenario_from_args(args, current)
         current.update(query)
