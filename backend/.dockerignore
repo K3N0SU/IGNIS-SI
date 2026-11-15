@@ -1,0 +1,14 @@
+.venv
+.env
+.env.*
+!.env.example
+.supervisor.pid
+__pycache__
+*.pyc
+.pytest_cache
+tests
+pytest.ini
+data/generated
+ml/artifacts
+Dockerfile
+.dockerignore

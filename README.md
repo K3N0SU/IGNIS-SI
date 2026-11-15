@@ -111,7 +111,7 @@ For n-heptane in air at 1 atm the model reproduces the central FLEX result close
 ## How it works
 
 ```text
-backend/
+backend/     Dockerfile for the API
   physics/   droplet d²-law with Stefan flow and radiation, Damkohler extinction,
              cool-flame branch, low-flow response, event-driven ODE solver,
              smoke coagulation, life-support protocol
@@ -166,6 +166,31 @@ python make_score.py .capture/score_long.wav --seconds 300 && node record_long.m
 Checks run on the final code: 107 unit tests, the endpoint smoke test, a 20-step browser test, and three load runs of 400 concurrent requests each with no failed request and no service restart.
 
 About the films: camera moves, captions and title cards are drawn by the recorder and are not part of the application. No pointer is shown; the controls are driven with real input and are seen to move. The music is synthesised by `scripts/make_score.py` and carries no third-party rights. One edit is made for time in both films: the assistant's answer is requested from the live service just before recording and replayed when the question is asked, because a live answer takes 8 to 16 seconds.
+
+## Deploying
+
+The app is two services: the Next.js frontend and the Python API. The frontend sends every `/api` request through its own server to the API, so the browser only ever talks to one address and no CORS setup is needed.
+
+**API, on any container host** (Render, Railway, Fly.io, Google Cloud Run):
+
+1. Create a web service from this repository with `backend` as the root directory and `backend/Dockerfile` as the Dockerfile. The image trains the classifier and runs the flight-data comparison while it builds, so the container is ready about two seconds after it starts.
+2. Add the environment variable `GEMINI_API_KEY` if you want the assistant. Leave it out and everything else still works.
+3. The container listens on `$PORT` (8000 if the host does not set one). Check `https://<your-api>/api/health`.
+
+To try the image locally:
+
+```bash
+docker build -t ignis-si-api backend
+docker run -p 8000:8000 -e GEMINI_API_KEY=your-key ignis-si-api
+```
+
+**Frontend, on Vercel:**
+
+1. Import the repository and set the root directory to `frontend`.
+2. Add the environment variable `IGNIS_API_ORIGIN` with the API's public address, for example `https://ignis-si-api.onrender.com`, with no trailing slash. It is read when the site is built, so redeploy after changing it.
+3. Deploy.
+
+A public deployment with a Gemini key lets anyone who has the link use that key's quota through the assistant.
 
 ## References
 
