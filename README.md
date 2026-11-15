@@ -169,6 +169,10 @@ About the films: camera moves, captions and title cards are drawn by the recorde
 
 ## Deploying
 
+**One step, on Render:** open https://render.com/deploy?repo=https://github.com/K3N0SU/IGNIS-SI, sign in, enter `GEMINI_API_KEY` if you want the assistant, and apply. `render.yaml` creates both services. If Render adds a suffix to the API's name, copy the API's real address into the web service's `IGNIS_API_ORIGIN` variable and redeploy it.
+
+To host the two parts separately instead:
+
 The app is two services: the Next.js frontend and the Python API. The frontend sends every `/api` request through its own server to the API, so the browser only ever talks to one address and no CORS setup is needed.
 
 **API, on any container host** (Render, Railway, Fly.io, Google Cloud Run):

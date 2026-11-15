@@ -1,0 +1,36 @@
+# Render blueprint: deploys the API and the web interface together.
+#
+# Open https://render.com/deploy?repo=https://github.com/K3N0SU/IGNIS-SI,
+# sign in, enter GEMINI_API_KEY when asked (or leave it empty), and apply.
+
+services:
+  - type: web
+    name: ignis-si-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      # Optional. Enables the in-app assistant. Entered in the Render dashboard, never stored here.
+      - key: GEMINI_API_KEY
+        sync: false
+
+  - type: web
+    name: ignis-si
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npx next start -p $PORT
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Address of the API service above. Render serves a service named
+      # ignis-si-api at this address unless the name is already taken, in which
+      # case it adds a suffix: copy the real address from the API service's page
+      # into this variable and redeploy the web service.
+      - key: IGNIS_API_ORIGIN
+        value: https://ignis-si-api.onrender.com
