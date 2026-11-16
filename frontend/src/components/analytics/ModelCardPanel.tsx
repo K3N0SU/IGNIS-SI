@@ -14,6 +14,7 @@ export function ModelCardPanel({ highlight }: { highlight?: boolean }) {
   return (
     <Panel
       title="Flame classifier"
+      help="The machine-learning model that names the fire state from sensor readings alone, and how often it is right on runs it was not trained on."
       subtitle="Scored on runs it never saw"
       highlight={highlight}
       className="h-full"

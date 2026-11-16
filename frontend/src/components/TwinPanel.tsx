@@ -8,7 +8,7 @@ import { COLORS, REGIME_STYLE, fmt, runs } from "@/lib/regimes";
 import type { Regime, Simulation } from "@/lib/types";
 
 import { CombustionTwin, type SensorMode, flameExtent, sample } from "./CombustionTwin";
-import { Panel, Readout, Segmented, Skeleton, Term } from "./ui";
+import { Panel, Readout, Segmented, Skeleton, Term, Tip } from "./ui";
 
 const VISIBLE_THRESHOLD = 0.01;
 const UV_THRESHOLD = 1e-4;
@@ -24,8 +24,10 @@ function SensorCell({
   color,
   alarm,
   testId,
+  help,
 }: {
   name: string;
+  help: string;
   sees: boolean;
   seesText: string;
   detail: string;
@@ -35,7 +37,11 @@ function SensorCell({
 }) {
   return (
     <div className="w-[168px] shrink-0 border-l border-line px-3.5 py-2.5" data-testid={testId}>
-      <div className="text-[11px] text-muted">{name}</div>
+      <div className="text-[11px] text-muted">
+        <Tip text={help} className="cursor-help">
+          {name}
+        </Tip>
+      </div>
       <div className="mt-0.5 flex items-center gap-1.5 text-[13px] font-medium text-fg">
         <span
           className="h-2 w-2 rounded-full border"
@@ -66,7 +72,11 @@ function StatusStrip({ sim }: { sim: Simulation }) {
     <div className="@container shrink-0 border-b border-line">
       <div className="flex items-stretch">
         <div className="min-w-0 flex-1 px-3.5 py-2.5" aria-live="polite">
-          <div className="text-[11px] text-muted">Fire state</div>
+          <div className="text-[11px] text-muted">
+            <Tip text="What the fire is doing at this moment of the playback, according to the physics model." className="cursor-help">
+              Fire state
+            </Tip>
+          </div>
           <div className="mt-0.5 flex items-center gap-2">
             <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: style.color }} />
             <span className="truncate text-[17px] font-semibold leading-6 text-fg" data-testid="fire-state">
@@ -78,6 +88,7 @@ function StatusStrip({ sim }: { sim: Simulation }) {
         <SensorCell
           testId="twin-status"
           name="Optical camera"
+          help="An ordinary camera, like the ones watching the cabin. It only sees flames that give off visible light."
           sees={opticalSees}
           seesText="Sees a flame"
           detail={opticalSees ? "Visible light" : cool ? "Blind to the cool flame" : "Nothing is glowing"}
@@ -86,6 +97,7 @@ function StatusStrip({ sim }: { sim: Simulation }) {
         />
         <SensorCell
           name="UV sensor"
+          help="A detector tuned to ultraviolet light from burning chemistry. It still sees a cool flame that is invisible to a camera."
           sees={uvSees}
           seesText="Detects emission"
           detail={uvSees ? (cool ? "Cool flame, still burning" : "Hot flame") : "No ultraviolet signal"}
@@ -464,6 +476,7 @@ export function TwinPanel({
   return (
     <Panel
       title="Combustion chamber"
+      help="A live picture of the burning droplet. Switch between what a normal camera sees and what an ultraviolet sensor sees. Drag to rotate, scroll to zoom."
       subtitle="One fuel droplet burning in microgravity"
       highlight={highlight}
       className="h-full"

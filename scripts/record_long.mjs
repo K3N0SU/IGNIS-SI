@@ -96,7 +96,18 @@ await s.card(null, false);
 // The problem.
 await say("The problem", "On Earth, hot gas rises and a flame feeds itself. In orbit there is no up.", 7);
 await say("The problem", "A flame becomes a sphere, fed only by slow diffusion. NASA studied this on the ISS by burning single fuel droplets.", 8);
-await say("The problem", "IGNIS-SI rebuilds that experiment, so you can ask what-if questions about fire in a spacecraft.", 7);
+
+// How it works.
+await s.click('[data-testid="nav-how"]');
+await page.waitForSelector('[data-testid="how-stage-check"]', { timeout: 15000 }).catch(() => undefined);
+await say("How it works", "IGNIS-SI rebuilds that experiment. It starts from real measurements: 261 droplet burns on the ISS, from NASA's open archive.", 5.5);
+await s.zoom('section[aria-label="From flight data to a checked prediction"]', 1.22, "top");
+await say("How it works", "A physics model of a burning droplet is tuned on 196 of those tests until it reproduces what NASA measured.", 5);
+await say("How it works", "You describe a fire, and the tuned model plays it out in a fraction of a second.", 4.5);
+await say("How it works", "The 65 tests held back score the model, and every prediction is checked against what NASA actually flew.", 5);
+await s.zoomOut();
+await s.click('[data-testid="nav-workbench"]');
+await page.waitForSelector('[data-testid="eclss"]');
 
 // Tour of the workbench.
 await focus("Scenario", 1.5);
@@ -201,18 +212,18 @@ const ask = `[data-testid="assistant-panel"] button:not([disabled]):has-text("${
 await page.waitForSelector(ask, { timeout: 8000 });
 await s.click(ask);
 await page.waitForSelector('[data-testid="assistant-reply"]', { timeout: 9000 }).catch(() => undefined);
-await hold(9);
+await hold(7);
 await s.zoom('[data-testid="assistant-panel"]', 1.35);
 await say("Assistant", "Every number in its answer comes from the simulation or the flight tables, never from the language model.", 10);
 await s.zoomOut();
-await say("Assistant", "It can also set up the workbench, so you see the answer instead of only reading it.", 6);
+await say("Assistant", "It can also set up the workbench, so you see the answer instead of only reading it.", 5);
 await s.click('[data-testid="assistant-launch"]');
 
 // Flight data.
 await s.click('[data-testid="nav-flight"]');
 await page.waitForSelector('[data-testid="flight-matrix"] circle', { timeout: 15000 }).catch(() => undefined);
 await s.caption("Flight data", "Every dot is a real droplet burned on the ISS in NASA's FLEX experiment: 261 tests.");
-await hold(4);
+await hold(3);
 await s.click(`${FLIGHT} button[data-value="methanol"]`);
 await hold(2.5);
 await s.click(`${FLIGHT} button[data-value="n-heptane"]`);
@@ -222,14 +233,14 @@ await hold(1);
 await focus("Model against flight", 1.45);
 await say("Model against flight", "Each point compares the model with one real test. The closer to the dashed line, the better.", 7);
 await focus("Calibration", 1.6);
-await say("Calibration", "The model was fitted to 196 tests, then checked on 65 it had never seen: 18 percent error on burning rate.", 8);
+await say("Calibration", "On the tests it never saw, tuning cut the burning-rate error from 34 to 18 percent.", 6);
 await s.zoomOut();
 await focus("NASA investigations, ranked for your scenario", 1.4);
 await s.caption("Investigations", "Decades of NASA results, compared by fuel, oxygen, airflow and sensors, and ranked for your scenario.");
 await page.locator('[data-investigation="FLEX"]').click();
 await hold(5);
 await page.locator('[data-investigation="BASS-II"]').click();
-await hold(4);
+await hold(3);
 
 // Materials and atmospheres.
 await s.zoomOut();
@@ -237,7 +248,7 @@ await s.click('[data-testid="nav-analytics"]');
 await page.waitForSelector('[data-testid="risk-table"] tbody tr', { timeout: 15000 }).catch(() => undefined);
 await s.caption("Materials", "Cabin materials ranked by how easily they ignite, how toxic they burn and how hard they are to put out.");
 await s.click('[data-testid="risk-filter"] [data-value="ISS"]');
-await hold(5);
+await hold(4);
 await s.click('[data-testid="risk-filter"] [data-value="EVA_PREP"]');
 await hold(2.5);
 await s.click('[data-testid="risk-filter"] [data-value="ARTEMIS"]');
@@ -246,7 +257,7 @@ await say("Artemis", "Artemis cabins will run at 34 percent oxygen. Materials th
 // End card.
 await s.caption("", "");
 await s.card(`${MARK}<p><b>See the invisible flame. Predict the backfire.</b><br>Know what has never been tested.</p>`, true);
-await hold(7);
+await hold(6);
 
 await s.stop();
 await browser.close();

@@ -133,6 +133,7 @@ export function FrontierMap({
   return (
     <Panel
       title="Tested conditions"
+      help="A map of oxygen and pressure. Marked areas were flown by NASA. Your scenario is the marker, so you can see whether it sits on tested ground."
       subtitle="Where flight data exists, and where your scenario sits"
       highlight={highlight}
       className="h-full"

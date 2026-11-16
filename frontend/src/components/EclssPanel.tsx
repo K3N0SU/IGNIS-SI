@@ -52,6 +52,7 @@ export function EclssPanel({ sim, highlight }: { sim: Simulation | null; highlig
   return (
     <Panel
       title="Response protocol"
+      help="What the life-support system should do about this fire, in order, and why. It changes with the scenario."
       subtitle="Life-support actions, in order"
       highlight={highlight}
       right={protocol ? <Tag color={STATUS_COLOR[protocol.hazard_level]}>{sentenceCase(protocol.hazard_level)}</Tag> : null}

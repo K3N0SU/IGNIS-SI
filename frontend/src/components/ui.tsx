@@ -1,12 +1,13 @@
 "use client";
 
-import { type CSSProperties, type ReactNode, useCallback, useId, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { GLOSSARY, type GlossaryKey } from "@/lib/glossary";
 
 export function Panel({
   title,
   subtitle,
+  help,
   right,
   children,
   className = "",
@@ -15,6 +16,7 @@ export function Panel({
 }: {
   title: string;
   subtitle?: string;
+  help?: string;
   right?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -32,6 +34,11 @@ export function Panel({
         <div className="flex min-w-0 items-baseline gap-2.5">
           <h2 className="shrink-0 text-[13px] font-semibold text-fg">{title}</h2>
           {subtitle ? <p className="truncate text-[11.5px] text-muted">{subtitle}</p> : null}
+          {help ? (
+            <span className="self-center">
+              <Help text={help} />
+            </span>
+          ) : null}
         </div>
         {right ? <div className="flex shrink-0 items-center gap-3">{right}</div> : null}
       </header>
@@ -95,6 +102,7 @@ export function Segmented<T extends string>({
 export function Slider({
   label,
   hint,
+  help,
   unit,
   value,
   min,
@@ -107,6 +115,7 @@ export function Slider({
 }: {
   label: string;
   hint?: GlossaryKey;
+  help?: string;
   unit: string;
   value: number;
   min: number;
@@ -123,7 +132,15 @@ export function Slider({
     <div>
       <div className="flex items-baseline justify-between">
         <label className="text-[12px] text-muted" htmlFor={testId}>
-          {hint ? <Term k={hint}>{label}</Term> : label}
+          {hint ? (
+            <Term k={hint}>{label}</Term>
+          ) : help ? (
+            <Tip text={help} className="cursor-help">
+              {label}
+            </Tip>
+          ) : (
+            label
+          )}
         </label>
         <span className="num text-[13px] text-fg">
           {value.toFixed(digits)}
@@ -269,6 +286,174 @@ export function Stat({
         {value}
         {unit ? <span className="ml-1 text-[11px] text-muted">{unit}</span> : null}
       </div>
+    </div>
+  );
+}
+
+/** A short description shown when the wrapped element is hovered or reached by keyboard. */
+export function Tip({
+  text,
+  children,
+  className = "",
+  focusable = false,
+  label,
+}: {
+  text: string;
+  children: ReactNode;
+  className?: string;
+  focusable?: boolean;
+  label?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const id = useId();
+  const [pos, setPos] = useState<CSSProperties | null>(null);
+
+  const show = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const width = 280;
+    const left = Math.min(Math.max(r.left, 8), window.innerWidth - width - 8);
+    setPos(
+      r.bottom + 130 > window.innerHeight
+        ? { left, bottom: window.innerHeight - r.top + 6, width }
+        : { left, top: r.bottom + 6, width },
+    );
+  }, []);
+  const hide = useCallback(() => setPos(null), []);
+
+  return (
+    <span
+      ref={ref}
+      tabIndex={focusable ? 0 : undefined}
+      aria-label={label}
+      aria-describedby={pos ? id : undefined}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={(e) => {
+        // A mouse click also focuses the element; only keyboard focus should open the description.
+        if ((e.target as HTMLElement).matches(":focus-visible")) show();
+      }}
+      onBlur={hide}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") hide();
+      }}
+      className={className}
+    >
+      {children}
+      {pos ? (
+        <span
+          id={id}
+          role="tooltip"
+          style={pos}
+          className="pointer-events-none fixed z-[60] whitespace-normal rounded-md border border-line-strong bg-raised px-3 py-2 text-left font-sans text-[12px] font-normal normal-case leading-relaxed tracking-normal text-fg shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+        >
+          {text}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** A small question mark that explains the thing beside it. */
+export function Help({ text }: { text: string }) {
+  return (
+    <Tip
+      text={text}
+      focusable
+      label="What is this?"
+      className="inline-flex h-[15px] w-[15px] shrink-0 cursor-help items-center justify-center rounded-full border border-line-strong font-sans text-[10px] font-medium leading-none tracking-normal text-muted hover:border-muted hover:text-fg"
+    >
+      ?
+    </Tip>
+  );
+}
+
+/** Open or closed state for a section, remembered in this browser. */
+export function useFold(id: string, defaultOpen = true): [boolean, () => void] {
+  const key = `ignis.fold.${id}`;
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(key);
+      if (saved !== null) setOpen(saved === "1");
+    } catch {
+      // Storage can be blocked; the section just starts in its default state.
+    }
+  }, [key]);
+  const toggle = useCallback(() => {
+    setOpen((was) => {
+      try {
+        window.localStorage.setItem(key, was ? "0" : "1");
+      } catch {
+        // Not remembered, still toggled.
+      }
+      return !was;
+    });
+  }, [key]);
+  return [open, toggle];
+}
+
+export function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="9"
+      height="9"
+      viewBox="0 0 10 10"
+      aria-hidden="true"
+      className={`shrink-0 transition-transform duration-150 ${open ? "rotate-90" : ""}`}
+    >
+      <path d="M3 1.5 7 5 3 8.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** A titled group that drops down and folds away when its heading is clicked. */
+export function Collapsible({
+  id,
+  title,
+  help,
+  right,
+  defaultOpen = true,
+  children,
+  className = "",
+  bodyClassName = "",
+}: {
+  id: string;
+  title: string;
+  help?: string;
+  right?: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}) {
+  const [open, toggle] = useFold(id, defaultOpen);
+  const bodyId = useId();
+  return (
+    <div className={className}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <button
+            type="button"
+            data-testid={`fold-${id}`}
+            aria-expanded={open}
+            aria-controls={bodyId}
+            onClick={toggle}
+            className="label -ml-1 flex items-center gap-1.5 rounded-[3px] px-1 py-0.5 text-left hover:text-fg"
+          >
+            <Chevron open={open} />
+            {title}
+          </button>
+          {help ? <Help text={help} /> : null}
+        </div>
+        {right}
+      </div>
+      {open ? (
+        <div id={bodyId} className={bodyClassName}>
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }

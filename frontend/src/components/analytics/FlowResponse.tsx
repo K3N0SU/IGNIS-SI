@@ -25,6 +25,7 @@ export function FlowResponse({ query, highlight }: { query: ChamberQuery; highli
   return (
     <Panel
       title="Airflow and fire intensity"
+      help="Your scenario re-run at every fan speed. The peak is the most dangerous airflow: enough to feed the flame, not enough to blow it out."
       subtitle="A little air feeds the flame, a lot blows it out"
       highlight={highlight}
       className="h-full"

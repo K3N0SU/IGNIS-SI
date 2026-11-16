@@ -33,6 +33,7 @@ export function AerosolPanel({ query, highlight }: { query: ChamberQuery; highli
   return (
     <Panel
       title="Smoke particle growth"
+      help="Without gravity, smoke particles stay near the fire and clump into larger ones. This shows how that changes which kind of smoke detector notices first."
       subtitle="Why smoke detectors respond differently in orbit"
       highlight={highlight}
       className="h-full"

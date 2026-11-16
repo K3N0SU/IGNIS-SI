@@ -9,7 +9,7 @@ import { clock, usePlayback } from "@/lib/playback";
 import { COLORS, REGIME_STYLE, fmt, fmtExp, runs } from "@/lib/regimes";
 import type { FlightNeighbour, Regime, SimEvent, Simulation } from "@/lib/types";
 
-import { Panel, Skeleton, Term } from "./ui";
+import { Chevron, Help, Panel, Skeleton } from "./ui";
 
 const Y_AXIS_WIDTH = 44;
 const MARGIN = { top: 6, right: 14, bottom: 0, left: 0 };
@@ -257,6 +257,15 @@ function EventStrip({ events, duration }: { events: SimEvent[]; duration: number
   );
 }
 
+const CHART_HELP: Record<string, string> = {
+  d2: "The droplet shrinking as it burns, plotted as diameter squared. A steady flame gives a straight line. Where the line flattens, burning has slowed or stopped.",
+  tf: "How hot the flame is. A hot flame sits near 2,000 K. A cool flame burns at only a few hundred kelvin and gives off no visible light.",
+  sensors: "What each instrument would pick up. When the optical line drops but the UV line stays up, a flame is burning that a camera cannot see.",
+  co: "Carbon monoxide produced compared with oxygen used. Cool flames burn incompletely and give off more of this toxic gas.",
+};
+
+const FOLD_KEY = "ignis.fold.charts";
+
 /** Largest scaled distance at which a flight test is still a fair comparison for the scenario. */
 const REFERENCE_MAX_DISTANCE = 1.0;
 
@@ -302,6 +311,28 @@ export function TelemetryCharts({
     return { rows: out, bands: timeBands, duration: sim.t[n - 1], markers: eventTimes };
   }, [sim, flight]);
 
+  const [closed, setClosed] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(FOLD_KEY);
+      if (saved) setClosed(saved.split(","));
+    } catch {
+      // Storage can be blocked; every chart just starts open.
+    }
+  }, []);
+  const toggle = (id: string): void => {
+    setClosed((was) => {
+      const next = was.includes(id) ? was.filter((v) => v !== id) : [...was, id];
+      try {
+        window.localStorage.setItem(FOLD_KEY, next.join(","));
+      } catch {
+        // Not remembered, still toggled.
+      }
+      return next;
+    });
+  };
+  const lastOpen = [...CHARTS].reverse().find((c) => !closed.includes(c.id))?.id;
+
   const shaded = useMemo(
     () => [...new Set(bands.map(([, , r]) => r))].filter((r) => r === "INVISIBLE_COOL_FLAME" || r === "RE_IGNITION_RISK"),
     [bands],
@@ -311,6 +342,7 @@ export function TelemetryCharts({
     <Panel
       title="Telemetry"
       subtitle="Simulated, not flight data"
+      help="What the instruments would record as the fire plays out. The vertical line follows the playback. Click a chart name to fold it away and give the others more room."
       highlight={highlight}
       className="h-full"
       bodyClassName="flex flex-col"
@@ -331,30 +363,47 @@ export function TelemetryCharts({
       }
     >
       {sim ? <EventStrip events={notableEvents(sim.events, sim.query.airflow_cm_s)} duration={duration} /> : null}
-      {CHARTS.map((def, idx) => {
-        const last = idx === CHARTS.length - 1;
+      {CHARTS.map((def) => {
+        const open = !closed.includes(def.id);
+        const last = def.id === lastOpen;
         return (
-          <div key={def.id} className="flex min-h-0 flex-1 flex-col border-b border-line px-2 pt-2 last:border-b-0">
+          <div
+            key={def.id}
+            className={`flex min-h-0 flex-col border-b border-line px-2 pt-2 last:border-b-0 ${open ? "flex-1" : "shrink-0 pb-2"}`}
+          >
             <div className="flex h-[18px] items-center justify-between px-1.5">
-              <span className="whitespace-nowrap text-[12px] font-medium text-fg">
-                {def.hint ? <Term k={def.hint}>{def.title}</Term> : def.title}
-                <span className="ml-2 text-[11px] font-normal text-muted">{def.unit}</span>
+              <span className="flex items-center gap-2 whitespace-nowrap">
+                <button
+                  type="button"
+                  data-testid={`fold-chart-${def.id}`}
+                  aria-expanded={open}
+                  onClick={() => toggle(def.id)}
+                  className="-ml-1 flex items-center gap-1.5 rounded-[3px] px-1 text-[12px] font-medium text-fg hover:text-white"
+                >
+                  <span className="text-muted">
+                    <Chevron open={open} />
+                  </span>
+                  {def.title}
+                </button>
+                <span className="text-[11px] text-muted">{def.unit}</span>
+                <Help text={CHART_HELP[def.id]} />
               </span>
               <span className="flex items-center gap-3">
                 {def.id === "d2" && flight ? (
-                  <span className="flex items-center gap-1.5 text-[11px] text-muted" data-testid="flight-overlay">
+                  <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] text-muted" data-testid="flight-overlay">
                     <span className="w-4 border-t-2 border-dashed border-nominal" />
-                    NASA test <span className="num text-fg">{flight.identifier}</span>, measured rate
+                    NASA test <span className="num text-fg">{flight.identifier}</span>
                   </span>
                 ) : null}
                 {sim && def.traces.length === 1 ? <Values def={def} sim={sim} /> : null}
               </span>
             </div>
-            {sim && def.traces.length > 1 ? (
+            {open && sim && def.traces.length > 1 ? (
               <div className="mt-0.5 flex h-[18px] items-center px-1.5">
                 <Values def={def} sim={sim} />
               </div>
             ) : null}
+            {open ? (
             <div className="relative mt-1 min-h-0 flex-1" data-testid={`chart-${def.id}`}>
               {sim ? (
                 <>
@@ -367,6 +416,7 @@ export function TelemetryCharts({
                 <Skeleton lines={2} className="px-2 pt-3" />
               )}
             </div>
+            ) : null}
           </div>
         );
       })}

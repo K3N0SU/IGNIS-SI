@@ -59,6 +59,7 @@ export function InvestigationsPanel({ query, className = "" }: { query: ChamberQ
     <Panel
       className={className}
       title="NASA investigations, ranked for your scenario"
+      help="All the NASA fire experiments in the archive, ordered by how much each one can tell you about the scenario you set."
       subtitle={rows ? `${rows.length} investigations, ${records.toLocaleString("en-US")} flight records, compared by fuel, oxygen, airflow and sensors` : "Loading"}
       bodyClassName="thin-scroll overflow-y-auto"
     >

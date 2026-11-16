@@ -3,7 +3,7 @@
 import { COLORS, STATUS_COLOR, sentenceCase } from "@/lib/regimes";
 import type { Assessment, DimensionCheck, Simulation } from "@/lib/types";
 
-import { Panel, Skeleton, Tag, Term } from "./ui";
+import { Collapsible, Panel, Skeleton, Tag, Term } from "./ui";
 
 const DIMENSION_DIGITS: Record<string, number> = { d0_mm: 1, x_o2: 2, pressure_atm: 2, airflow_cm_s: 1 };
 const DISAGREEMENT_WARN = 0.4;
@@ -43,6 +43,7 @@ export function CitationInspector({
     <Panel
       title="Evidence"
       subtitle="Is this prediction backed by flight data?"
+      help="How far to trust what you see. It compares your scenario with the conditions NASA actually flew and shows the closest real test."
       highlight={highlight}
       className="h-full"
       right={assessment ? <Tag color={STATUS_COLOR[assessment.verdict]}>{sentenceCase(assessment.verdict)}</Tag> : null}
@@ -65,11 +66,12 @@ export function CitationInspector({
 
           {assessment ? (
             <div className="border-b border-line px-3.5 py-3">
-              <div className="mb-2 flex items-baseline justify-between">
-                <span className="label">
-                  Your scenario against the <Term k="envelope">tested range</Term>
-                </span>
-              </div>
+              <Collapsible
+                id="evidence-range"
+                title="Your scenario against the tested range"
+                help="Each bar is the span of conditions flown on the station. The marker is your setting. Inside the bar, flight data backs the prediction. Outside, the model is extrapolating."
+                bodyClassName="mt-2"
+              >
               <div className="grid grid-cols-[104px_40px_minmax(0,1fr)_50px] items-start gap-x-2.5 gap-y-1">
                 {assessment.dimensions.map((d) => {
                   const digits = DIMENSION_DIGITS[d.dimension] ?? 2;
@@ -107,12 +109,18 @@ export function CitationInspector({
                   </span>
                 </div>
               ) : null}
+              </Collapsible>
             </div>
           ) : null}
 
           {assessment && assessment.nearest_tests.length ? (
             <div className="border-b border-line px-3.5 py-3" data-testid="nearest-flight-test">
-              <div className="label mb-2">Closest NASA flight test</div>
+              <Collapsible
+                id="evidence-nearest"
+                title="Closest NASA flight test"
+                help="The real test on the station that most resembles your scenario, with what was measured beside what the model predicts."
+                bodyClassName="mt-2"
+              >
               {(() => {
                 const t = assessment.nearest_tests[0];
                 const modelRate = sim?.summary.mean_hot_burning_rate_mm2_s ?? null;
@@ -147,11 +155,17 @@ export function CitationInspector({
                   </>
                 );
               })()}
+              </Collapsible>
             </div>
           ) : null}
 
           <div className="border-b border-line px-3.5 py-3">
-            <div className="label mb-2">Reference experiment</div>
+            <Collapsible
+              id="evidence-reference"
+              title="Reference experiment"
+              help="The NASA campaign the model is anchored to, and the public dataset its numbers come from."
+              bodyClassName="mt-2"
+            >
             <dl className="grid grid-cols-[72px_minmax(0,1fr)] gap-x-2.5 gap-y-1 leading-snug">
               <dt className="text-muted">Campaign</dt>
               <dd className="text-fg">
@@ -175,10 +189,17 @@ export function CitationInspector({
                 </>
               ) : null}
             </dl>
+            </Collapsible>
           </div>
 
           <div className="px-3.5 py-3">
-            <div className="label mb-2">Sources</div>
+            <Collapsible
+              id="evidence-sources"
+              title="Sources"
+              help="Published papers behind the physics used for this scenario. Each link opens the paper."
+              defaultOpen={false}
+              bodyClassName="mt-2"
+            >
             <ul className="space-y-2">
               {prov.citations.map((c) => (
                 <li key={c.key} className="leading-snug">
@@ -192,6 +213,7 @@ export function CitationInspector({
                 </li>
               ))}
             </ul>
+            </Collapsible>
           </div>
         </div>
       ) : (

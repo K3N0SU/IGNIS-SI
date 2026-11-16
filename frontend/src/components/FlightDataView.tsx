@@ -273,6 +273,7 @@ export function FlightDataView({
       <Panel
         className="col-span-5"
         title="FLEX flight tests"
+        help="Every droplet burn in NASA's public FLEX table. Each square is one test on the station, coloured by how it ended."
         subtitle={flex ? `${flex.tests.length} droplet burns on the ISS, 2009 to 2011` : "Loading NASA flight table"}
         bodyClassName="flex flex-col"
         right={
@@ -320,6 +321,7 @@ export function FlightDataView({
       <Panel
         className="col-span-4"
         title="Model against flight"
+        help="Model predictions plotted against what was measured. Points on the diagonal line are tests the model got exactly right."
         subtitle="Each point is one flight test"
         bodyClassName="flex flex-col"
         right={
@@ -344,7 +346,7 @@ export function FlightDataView({
         </p>
       </Panel>
 
-      <Panel className="col-span-3" title="Calibration" subtitle="Fitted to flight data, checked on tests it never saw" bodyClassName="thin-scroll overflow-y-auto px-3.5 py-3">
+      <Panel className="col-span-3" title="Calibration" help="The model's physics constants were tuned on most of the flight tests, then scored on the rest, which it had never seen." subtitle="Fitted to flight data, checked on tests it never saw" bodyClassName="thin-scroll overflow-y-auto px-3.5 py-3">
         {after ? (
           <div className="text-[12px]" data-testid="calibration">
             <div className="grid grid-cols-2 gap-3">
@@ -378,7 +380,7 @@ export function FlightDataView({
         )}
       </Panel>
 
-      <Panel className="col-span-5" title="Closest flight tests to your scenario" subtitle="Measured values from NASA, beside the model" bodyClassName="thin-scroll overflow-y-auto">
+      <Panel className="col-span-5" title="Closest flight tests to your scenario" help="The real tests most like the scenario you set on the workbench, with NASA's measurements beside the model's numbers." subtitle="Measured values from NASA, beside the model" bodyClassName="thin-scroll overflow-y-auto">
         {nearest.length ? (
           <table className="w-full text-[12px]" data-testid="nearest-tests">
             <thead className="sticky top-0 bg-panel">

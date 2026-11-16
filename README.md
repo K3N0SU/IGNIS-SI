@@ -19,6 +19,7 @@ The standard first response to a spacecraft fire is to stop ventilation. If the 
 | **Workbench** | Set fuel, droplet size, oxygen, pressure and fan airflow. Watch the burn in 3D through an optical camera or a UV sensor, with synchronised sensor charts (the closest real NASA test is drawn on the droplet-size chart), a plain-language fire state, a step-by-step life-support response and the evidence behind the prediction. |
 | **Analytics** | Compare cabin materials across the ISS, 10.2 psia and Artemis atmospheres; see which conditions NASA has flown; see how fire intensity responds to airflow; see how smoke particles grow in orbit. |
 | **Flight data** | Browse all 261 usable FLEX droplet burns, see the model plotted against flight measurements, and compare NASA's investigations by fuel, oxygen, airflow and sensors, ranked for your scenario, each with its findings and DOI. |
+| **How it works** | A one-page diagram of the pipeline, with live numbers: NASA flight tests, calibration, your simulation, and the check against tests the model never saw. Also says what each screen answers and what the model cannot tell you. |
 | **Assistant** | Ask a question in plain language. It runs the simulation, looks up flight tests and sets up the workbench to show you the answer. |
 
 A guided tour in the top bar walks through the whole story in about 90 seconds.

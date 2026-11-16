@@ -15,6 +15,8 @@ import { CitationInspector } from "./CitationInspector";
 import type { SensorMode } from "./CombustionTwin";
 import { EclssPanel } from "./EclssPanel";
 import { FlightDataView } from "./FlightDataView";
+import { HowItWorks } from "./HowItWorks";
+import { Tip } from "./ui";
 import { GuidedTour, type TourController, type WorkbenchFocus } from "./GuidedTour";
 import { TelemetryCharts } from "./TelemetryCharts";
 import { TwinPanel } from "./TwinPanel";
@@ -221,8 +223,8 @@ export function Shell({ initialView }: { initialView: View }) {
           </div>
           <nav className="ml-3 flex h-full" aria-label="Views">
             {VIEWS.map((v) => (
+              <Tip key={v.key} text={v.hint} className="flex h-full">
               <button
-                key={v.key}
                 type="button"
                 data-testid={`nav-${v.key}`}
                 aria-current={view === v.key ? "page" : undefined}
@@ -234,6 +236,7 @@ export function Shell({ initialView }: { initialView: View }) {
                 {v.label}
                 {view === v.key ? <span className="absolute inset-x-3 bottom-0 h-0.5 bg-fg" /> : null}
               </button>
+              </Tip>
             ))}
           </nav>
         </div>
@@ -243,6 +246,7 @@ export function Shell({ initialView }: { initialView: View }) {
             <span className="w-[86px] text-[12px] text-muted">{link.text}</span>
           </span>
           <UtcClock />
+          <Tip text="Ask questions in plain language. The assistant can run simulations, look up flight tests and change the scenario for you.">
           <button
             type="button"
             data-testid="assistant-launch"
@@ -254,6 +258,8 @@ export function Shell({ initialView }: { initialView: View }) {
           >
             Ask assistant
           </button>
+          </Tip>
+          <Tip text="A short walk through the main ideas, one step at a time, using the live app.">
           <button
             type="button"
             data-testid="tour-launch"
@@ -263,6 +269,7 @@ export function Shell({ initialView }: { initialView: View }) {
           >
             {touring ? "End tour" : "Guided tour"}
           </button>
+          </Tip>
         </div>
       </header>
 
@@ -301,6 +308,17 @@ export function Shell({ initialView }: { initialView: View }) {
           </div>
         ) : view === "flight" ? (
           <FlightDataView query={query} sim={sim} assessment={assessment} />
+        ) : view === "how" ? (
+          <HowItWorks
+            sim={sim}
+            assessment={assessment}
+            onOpen={setView}
+            onAssistant={() => setAssistantOpen(true)}
+            onTour={() => {
+              setView("workbench");
+              setTouring(true);
+            }}
+          />
         ) : (
           <AnalyticsView query={query} assessment={assessment} focus={analyticsFocus} riskFilter={riskFilter} />
         )}

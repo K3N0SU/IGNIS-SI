@@ -90,6 +90,23 @@ await page.waitForSelector('[data-testid="flight-matrix"] circle', { timeout: 15
 check("flight view plots the FLEX tests", (await page.locator('[data-testid="flight-matrix"] circle').count()) > 250);
 check("calibration results are shown", /held-out/i.test(await text('[data-testid="calibration"]')));
 
+await page.click('[data-testid="nav-how"]');
+await page.waitForFunction(() => /^\d+$/.test(document.querySelector('[data-testid="how-stage-check"] .num')?.textContent ?? ""), null, { timeout: 30000 });
+const how = await text('[data-testid="how-it-works"]');
+check("how it works shows the pipeline with live numbers", /261/.test(how) && /196/.test(how) && /65/.test(how));
+await page.hover('[data-testid="how-stage-fit"]');
+check("hovering a stage shows a description", /not a black box/.test(await text('[role="tooltip"]')));
+await page.click('[data-testid="how-open-workbench"]');
+await page.waitForSelector('[data-testid="fold-presets"]');
+await page.click('[data-testid="fold-presets"]');
+const hidden = (await page.locator('[data-testid="preset-flex"]').count()) === 0;
+await page.click('[data-testid="fold-presets"]');
+check("sections fold away and drop back down", hidden && (await page.locator('[data-testid="preset-flex"]').isVisible()));
+await page.click('[data-testid="fold-chart-tf"]');
+const chartGone = (await page.locator('[data-testid="chart-tf"]').count()) === 0;
+await page.click('[data-testid="fold-chart-tf"]');
+check("charts fold away and come back", chartGone && (await page.locator('[data-testid="chart-tf"]').isVisible()));
+
 await page.click('[data-testid="assistant-launch"]');
 await page.waitForSelector('[data-testid="assistant-panel"]');
 const status = await (await page.request.get(`${BASE}/api/assistant/status`)).json();

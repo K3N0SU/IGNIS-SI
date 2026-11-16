@@ -119,24 +119,28 @@ if (reply) {
   await s.until(23.4);
 }
 
+// Where the numbers come from.
+await s.click('[data-testid="nav-how"]');
+await s.caption("How it works", "Real ISS flight tests tune a physics model. Tests it never saw check it.");
+await page.waitForSelector('[data-testid="how-stage-check"]', { timeout: 8000 }).catch(() => undefined);
+await s.until(25.5);
+
 // Real flight data, filtered live.
 await s.click('[data-testid="nav-flight"]');
-await s.caption("Flight data", "Calibrated on 261 real ISS droplet burns. NASA's investigations, compared and ranked.");
+await s.caption("Flight data", "261 real droplet burns from NASA, beside the model.");
 await page.waitForSelector('[data-testid="flight-matrix"] circle', { timeout: 8000 }).catch(() => undefined);
-await s.until(24.6);
+await s.until(26.0);
 await s.click(`${FLIGHT} button[data-value="methanol"]`);
-await s.until(25.4);
-await s.click(`${FLIGHT} button[data-value="n-heptane"]`);
-await s.until(26.2);
+await s.until(26.6);
 
 // Material risk across atmospheres.
 await s.click('[data-testid="nav-analytics"]');
 await s.caption("Artemis", "At 34 % oxygen, materials that are safe on the ISS start to burn.");
 await page.waitForSelector('[data-testid="risk-table"] tbody tr', { timeout: 8000 }).catch(() => undefined);
 await s.click('[data-testid="risk-filter"] [data-value="ISS"]');
-await s.until(27.0);
+await s.until(27.2);
 await s.click('[data-testid="risk-filter"] [data-value="ARTEMIS"]');
-await s.until(27.8);
+await s.until(27.9);
 
 // End card.
 await s.caption("", "");

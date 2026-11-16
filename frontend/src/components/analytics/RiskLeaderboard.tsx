@@ -41,6 +41,7 @@ export function RiskLeaderboard({ highlight, focus }: { highlight?: boolean; foc
   return (
     <Panel
       title="Material fire risk"
+      help="Common cabin materials ranked by how easily they ignite, how much carbon monoxide they make and how hard they are to put out."
       subtitle="Cabin materials ranked in each cabin atmosphere"
       highlight={highlight}
       className="h-full"

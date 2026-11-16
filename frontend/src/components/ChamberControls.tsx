@@ -3,7 +3,7 @@
 import { COLORS, PRESETS, type Preset } from "@/lib/regimes";
 import type { ChamberQuery, DiluentKey, FlowMode, FuelKey, Simulation } from "@/lib/types";
 
-import { Panel, Segmented, Slider, Term } from "./ui";
+import { Collapsible, Panel, Segmented, Slider, Term, Tip } from "./ui";
 
 const FUELS: { value: FuelKey; label: string }[] = [
   { value: "n-heptane", label: "n-Heptane (C7H16)" },
@@ -36,6 +36,7 @@ export function ChamberControls({
     <Panel
       title="Scenario"
       subtitle="Set up the chamber"
+      help="Describe the fire you want to study: the fuel, the cabin air and the fans. Every other panel updates as soon as you change something here."
       highlight={highlight}
       right={
         <span className="text-[11px] text-muted" aria-live="polite">
@@ -51,35 +52,46 @@ export function ChamberControls({
       bodyClassName="thin-scroll overflow-y-auto px-3.5 py-2.5"
     >
       <div className="space-y-2 sw:grid sw:grid-cols-2 sw:gap-x-6 sw:gap-y-2.5 sw:space-y-0">
-        <div className="sw:col-span-2">
-          <div className="label mb-1.5">Presets</div>
-          <div className="grid grid-cols-2 gap-1.5 sw:grid-cols-4">
+        <Collapsible
+          id="presets"
+          title="Presets"
+          help="Ready-made scenarios. Each one sets every control below to show a different kind of fire behaviour."
+          className="sw:col-span-2"
+          bodyClassName="mt-1.5 grid grid-cols-2 gap-1.5 sw:grid-cols-4"
+        >
             {PRESETS.map((p) => {
               const active = matches(p, query);
               return (
+                <Tip key={p.key} text={p.description} className="flex min-w-0">
                 <button
-                  key={p.key}
                   type="button"
                   data-testid={`preset-${p.key}`}
                   aria-pressed={active}
-                  title={p.description}
                   onClick={() => onChange(p.query)}
-                  className={`rounded-md border px-2.5 py-1.5 text-left transition-colors ${
+                  className={`min-w-0 flex-1 rounded-md border px-2.5 py-1.5 text-left transition-colors ${
                     active ? "border-muted bg-raised" : "border-line hover:border-line-strong hover:bg-raised"
                   }`}
                 >
                   <div className="text-[12px] font-medium text-fg">{p.label}</div>
                   <div className="truncate text-[11px] text-muted">{p.summary}</div>
                 </button>
+                </Tip>
               );
             })}
-          </div>
-        </div>
+        </Collapsible>
 
-        <div className="space-y-2 border-t border-line pt-2.5 sw:col-start-1 sw:row-start-2">
+        <Collapsible
+          id="fuel"
+          title="Fuel and droplet"
+          help="What is burning and how much of it. A bigger droplet burns longer and loses more heat as radiation."
+          className="border-t border-line pt-2.5 sw:col-start-1 sw:row-start-2"
+          bodyClassName="mt-2 space-y-2"
+        >
           <div className="flex items-center justify-between gap-3">
             <label className="text-[12px] text-muted" htmlFor="fuel">
-              Fuel
+              <Tip text="The liquid that is burning. Heptane and methanol were flown on the station, so predictions for them are checked against real tests." className="cursor-help">
+                Fuel
+              </Tip>
             </label>
             <select
               id="fuel"
@@ -98,6 +110,7 @@ export function ChamberControls({
           <Slider
             testId="slider-diameter"
             label="Droplet diameter"
+            help="Starting width of the fuel droplet. Flight tests used droplets between about 1.5 and 5 mm."
             unit="mm"
             value={query.d0_mm}
             min={1.5}
@@ -106,12 +119,19 @@ export function ChamberControls({
             digits={1}
             onChange={(v) => onChange({ d0_mm: v })}
           />
-        </div>
+        </Collapsible>
 
-        <div className="space-y-2 border-t border-line pt-2.5 sw:col-start-2 sw:row-span-2 sw:row-start-2">
+        <Collapsible
+          id="atmosphere"
+          title="Cabin air"
+          help="The gas around the droplet. More oxygen or pressure makes a fire hotter and harder to put out."
+          className="border-t border-line pt-2.5 sw:col-start-2 sw:row-span-2 sw:row-start-2"
+          bodyClassName="mt-2 space-y-2"
+        >
           <Slider
             testId="slider-o2"
             label="Oxygen"
+            help="Share of the cabin air that is oxygen. Earth and the station sit near 21 %. Exploration cabins are planned richer."
             unit="% vol"
             value={query.x_o2 * 100}
             min={14}
@@ -123,6 +143,7 @@ export function ChamberControls({
           <Slider
             testId="slider-pressure"
             label="Cabin pressure"
+            help="Total air pressure. Sea level is 1 atm. Lower pressure makes spacewalk preparation faster."
             unit="atm"
             value={query.pressure_atm}
             min={0.5}
@@ -156,12 +177,19 @@ export function ChamberControls({
               <span className="ml-1 text-[11px] text-muted">atm</span>
             </span>
           </div>
-        </div>
+        </Collapsible>
 
-        <div className="space-y-2 border-t border-line pt-2.5 sw:col-start-1 sw:row-start-3">
+        <Collapsible
+          id="ventilation"
+          title="Ventilation"
+          help="Cabin fans move air past the fire. In orbit a little airflow feeds a flame, so when the fans restart matters."
+          className="border-t border-line pt-2.5 sw:col-start-1 sw:row-start-3"
+          bodyClassName="mt-2 space-y-2"
+        >
           <Slider
             testId="slider-airflow"
             label="Cabin fan airflow"
+            help="How fast the fans push air past the droplet. Zero means still air."
             unit="cm/s"
             value={query.airflow_cm_s}
             min={0}
@@ -172,7 +200,11 @@ export function ChamberControls({
             onChange={(v) => onChange({ airflow_cm_s: v })}
           />
           <div>
-            <div className="mb-1 text-[12px] text-muted">When the fans run</div>
+            <div className="mb-1 text-[12px] text-muted">
+              <Tip text="Crews stop the fans when a fire is detected. Choose whether they stay on throughout, or come back on after the visible flame has gone out." className="cursor-help">
+                When the fans run
+              </Tip>
+            </div>
             <Segmented<FlowMode>
               block
               size="sm"
@@ -189,6 +221,7 @@ export function ChamberControls({
             <Slider
               testId="slider-delay"
               label="Restart delay after flame-out"
+              help="How long the crew waits after the flame disappears before turning the fans back on. Too soon can relight a hidden cool flame."
               unit="s"
               value={query.restore_delay_s}
               min={0}
@@ -198,7 +231,7 @@ export function ChamberControls({
               onChange={(v) => onChange({ restore_delay_s: v })}
             />
           ) : null}
-        </div>
+        </Collapsible>
       </div>
     </Panel>
   );
