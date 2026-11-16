@@ -127,6 +127,15 @@ export async function openStage(browser, { framesDir, everyNthFrame = 1, quality
   const context = await browser.newContext({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   await page.addInitScript(overlayScript);
+  // Films are framed at full scale so text stays readable in a video player.
+  await page.addInitScript(() => {
+    // Set on the root element itself and re-applied, because the app replaces
+    // nodes it did not render while it starts up.
+    const apply = () => document.documentElement?.style.setProperty("--ui-zoom", "1", "important");
+    apply();
+    document.addEventListener("DOMContentLoaded", apply);
+    setInterval(apply, 200);
+  });
 
   const cdp = await context.newCDPSession(page);
   const frames = [];
@@ -206,6 +215,14 @@ export async function openStage(browser, { framesDir, everyNthFrame = 1, quality
       if (remaining > 0) await page.waitForTimeout(remaining);
     },
     stop: async () => {
+      // A still picture produces no frames, so the film would end at the last
+      // change. Repaint once so the final shot is held up to this moment.
+      await page.evaluate(() => {
+        const mark = document.createElement("div");
+        mark.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;z-index:100001;background:#0a0b0e";
+        document.body.appendChild(mark);
+      });
+      await page.waitForTimeout(250);
       await cdp.send("Page.stopScreencast");
       await acks;
     },
