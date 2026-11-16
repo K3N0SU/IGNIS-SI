@@ -116,7 +116,7 @@ export function HowItWorks({
 
   return (
     <div className="thin-scroll h-full overflow-y-auto" data-testid="how-it-works">
-      <div className="mx-auto flex max-w-[1500px] flex-col gap-2">
+      <div className="mx-auto flex max-w-[1900px] flex-col gap-2">
         <section className="rounded-md border border-line bg-panel px-5 py-4">
           <h1 className="text-[17px] font-semibold text-fg">How IGNIS-SI works</h1>
           <p className="mt-1.5 max-w-[980px] text-[13px] leading-relaxed text-muted">

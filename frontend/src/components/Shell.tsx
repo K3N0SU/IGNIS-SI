@@ -212,12 +212,12 @@ export function Shell({ initialView }: { initialView: View }) {
       : { color: COLORS.nominal, text: "Solver online" };
 
   return (
-    <div className="flex h-screen min-h-0 flex-col">
+    <div className="app-root flex min-h-0 flex-col">
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-line bg-panel px-4">
         <div className="flex h-full items-center gap-5">
           <Wordmark />
           <span className="h-6 w-px bg-line" />
-          <div className="hidden leading-none min-[1280px]:block" data-testid="mission-id">
+          <div className="hidden leading-none min-[1024px]:block" data-testid="mission-id">
             <div className="text-[12px] font-medium text-fg">ISS Destiny laboratory</div>
             <div className="mt-1 text-[10.5px] text-muted">Combustion Integrated Rack</div>
           </div>
@@ -292,7 +292,7 @@ export function Shell({ initialView }: { initialView: View }) {
                 </button>
               </div>
             ) : null}
-            <div className="grid min-h-0 flex-1 grid-cols-[320px_minmax(0,1fr)_384px] gap-2 min-[1700px]:grid-cols-[368px_minmax(0,1fr)_448px] sw:grid-cols-[520px_minmax(0,1fr)_540px]">
+            <div className="grid min-h-0 flex-1 grid-cols-[320px_minmax(0,1fr)_384px] gap-2 min-[1360px]:grid-cols-[368px_minmax(0,1fr)_448px] sw:grid-cols-[520px_minmax(0,1fr)_540px]">
               <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-2 sw:grid-rows-[auto_minmax(0,1fr)]">
                 <ChamberControls query={query} onChange={setQuery} sim={sim} loading={loading} highlight={focus === "controls"} />
                 <EclssPanel sim={sim} highlight={focus === "eclss"} />

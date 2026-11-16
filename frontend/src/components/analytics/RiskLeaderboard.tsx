@@ -12,7 +12,7 @@ import { Explain, LoadFailed, useFetch } from "./shared";
 function Score({ value }: { value: number }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="hidden h-1 w-14 overflow-hidden rounded-[1px] bg-line min-[1500px]:block">
+      <div className="hidden h-1 w-14 overflow-hidden rounded-[1px] bg-line min-[1200px]:block">
         <div className="h-1 bg-muted" style={{ width: `${value}%` }} />
       </div>
       <span className="num w-8 text-right text-fg">{value.toFixed(0)}</span>
@@ -48,7 +48,7 @@ export function RiskLeaderboard({ highlight, focus }: { highlight?: boolean; foc
       bodyClassName="thin-scroll overflow-y-auto"
       right={
         <>
-          <span className="hidden text-[11.5px] text-muted min-[1500px]:inline">Oxygen level</span>
+          <span className="hidden text-[11.5px] text-muted min-[1200px]:inline">Oxygen level</span>
           <Segmented size="sm" testId="risk-filter" ariaLabel="Cabin atmosphere" value={filter} onChange={setFilter} options={FILTERS} />
         </>
       }
@@ -80,7 +80,7 @@ export function RiskLeaderboard({ highlight, focus }: { highlight?: boolean; foc
                 <td className="whitespace-nowrap py-1 pr-3 font-medium text-fg">{e.material_name}</td>
                 <td className="whitespace-nowrap py-1 pr-3 text-muted">
                   {e.atmosphere_name}
-                  <span className="num ml-2 hidden text-[11px] text-faint min-[1700px]:inline">
+                  <span className="num ml-2 hidden text-[11px] text-faint min-[1360px]:inline">
                     {(e.x_o2 * 100).toFixed(1)} % O₂, {e.pressure_atm.toFixed(2)} atm
                   </span>
                 </td>

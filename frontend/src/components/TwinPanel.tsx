@@ -483,7 +483,7 @@ export function TwinPanel({
       bodyClassName="flex flex-col"
       right={
         <>
-          <span className="hidden text-[11.5px] text-muted min-[1500px]:inline">View through</span>
+          <span className="hidden text-[11.5px] text-muted min-[1200px]:inline">View through</span>
           <Segmented
             testId="sensor-mode"
             ariaLabel="Sensor view"

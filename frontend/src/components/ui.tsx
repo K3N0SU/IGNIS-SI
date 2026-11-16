@@ -3,6 +3,7 @@
 import { type CSSProperties, type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { GLOSSARY, type GlossaryKey } from "@/lib/glossary";
+import { UI_ZOOM } from "@/lib/zoom";
 
 export function Panel({
   title,
@@ -214,13 +215,16 @@ export function Term({ k, children }: { k: GlossaryKey; children: ReactNode }) {
   const show = useCallback(() => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
+    // Measurements come back in screen pixels; positions are set in layout pixels.
+    const b = el.getBoundingClientRect();
+    const r = { left: b.left / UI_ZOOM, top: b.top / UI_ZOOM, bottom: b.bottom / UI_ZOOM };
+    const view = { width: window.innerWidth / UI_ZOOM, height: window.innerHeight / UI_ZOOM };
     const width = 280;
-    const left = Math.min(Math.max(r.left, 8), window.innerWidth - width - 8);
+    const left = Math.min(Math.max(r.left, 8), view.width - width - 8);
     // Fixed positioning keeps the tooltip out of the scrolling panels' clip rect.
     setPos(
-      r.bottom + 130 > window.innerHeight
-        ? { left, bottom: window.innerHeight - r.top + 6, width }
+      r.bottom + 130 > view.height
+        ? { left, bottom: view.height - r.top + 6, width }
         : { left, top: r.bottom + 6, width },
     );
   }, []);
@@ -311,12 +315,15 @@ export function Tip({
   const show = useCallback(() => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
+    // Measurements come back in screen pixels; positions are set in layout pixels.
+    const b = el.getBoundingClientRect();
+    const r = { left: b.left / UI_ZOOM, top: b.top / UI_ZOOM, bottom: b.bottom / UI_ZOOM };
+    const view = { width: window.innerWidth / UI_ZOOM, height: window.innerHeight / UI_ZOOM };
     const width = 280;
-    const left = Math.min(Math.max(r.left, 8), window.innerWidth - width - 8);
+    const left = Math.min(Math.max(r.left, 8), view.width - width - 8);
     setPos(
-      r.bottom + 130 > window.innerHeight
-        ? { left, bottom: window.innerHeight - r.top + 6, width }
+      r.bottom + 130 > view.height
+        ? { left, bottom: view.height - r.top + 6, width }
         : { left, top: r.bottom + 6, width },
     );
   }, []);
